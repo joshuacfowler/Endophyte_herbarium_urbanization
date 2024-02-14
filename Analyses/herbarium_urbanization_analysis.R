@@ -62,8 +62,8 @@ endo_herb <- endo_herb_georef %>%
 #                                         Spp_code == "AGPE" & Endo_status_liberal == 1~ 0, TRUE ~ Endo_status_liberal))
 
 # Looking at just AGHY for now, but we can likely fit one model for all species
-# endo_herb <- endo_herb %>% 
-#   filter(Spp_code == "AGHY")
+endo_herb <- endo_herb %>%
+  filter(Spp_code == "AGHY")
 
 
 # updating the scorer labels
@@ -234,8 +234,8 @@ spde <- inla.spde2.pcmatern(
 #   space_int(coords, model = spde)
    
 # version with all species in one model. Note that we remove the intercept, and then we have to specify that the species is a factor 
-s_components <- ~ -1 +
-  year + species(endo_herb$species_index, model = "factor_full")+
+s_components <- ~ Intercept(1) +
+  year +
   space_int(coords, group = species_index, model = spde)
 
 
@@ -382,13 +382,14 @@ multiplot(plotlist = flist, cols = 2)
 
 
 ###### Getting and plotting prediction from model #####
-# Here I am showing u
+# Here I am showing just the trend across year, but you could presumably show different interactions
 min_year <- min(endo_herb$year)
 max_year <- max(endo_herb$year)
+preddata <- data.frame(year = seq(min_year, max_year))
 
 year.pred <- predict(
   fit,
-  data.frame(year = seq(min_year, max_year)),
+  newdata = preddata,
   formula = ~ invlogit(Intercept + year))
 
 
