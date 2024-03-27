@@ -533,14 +533,33 @@ preddata <- expand.grid(std_year = seq(min_year, max_year), X_mean = c(1,5))
 year.pred <- predict(
   fit,
   newdata = preddata,
-  formula = ~(invlogit( Intercept + std_year))) %>%  
+  formula = ~(invlogit(Intercept + std_year))) %>%  
     mutate(year = std_year*(sd(endo_herb$year)) + mean(endo_herb$year))
 
 
+
+# binning the data for plotting
+endo_herb_binned <- endo_herb %>% 
+  mutate(binned_year = cut(year, breaks = 50)) %>%
+  group_by(Spp_code, species,binned_year) %>%   
+  summarise(mean_year = mean(year),
+            mean_endo = mean(Endo_status_liberal),
+            mean_lon = mean(lon),
+            mean_lat = mean(lat),
+            sample = n()) %>% 
+  mutate(lat_bin = case_when(mean_lat>=35 ~ paste("43"),
+                             mean_lat<35 ~ paste("35")),
+         lon_bin = case_when(mean_lon<=-94 ~ paste("-90"),
+                             mean_lon>-94 ~ paste("-80") ))
+
+
 ggplot(year.pred) +
-  # geom_point(data =endo_herb, aes(x = year, y = Endo_status_liberal))+
+  geom_point(data = endo_herb_binned, aes(x = mean_year, y = mean_endo, size = sample))+
+  geom_point(data =endo_herb, aes(x = year, y = Endo_status_liberal), shape = "|")+
   geom_line(aes(year, mean)) +
   geom_ribbon(aes(year, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
   geom_ribbon(aes(year, ymin = mean - 1 * sd, ymax = mean + 1 * sd), alpha = 0.2) +
   lims(y = c(0,1))
+
+
 
