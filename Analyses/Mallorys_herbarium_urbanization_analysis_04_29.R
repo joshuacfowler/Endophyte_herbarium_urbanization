@@ -572,15 +572,15 @@ posteriors_df <- as_tibble(posteriors, rownames = "param") %>%
   mutate(param_label = case_when(param == param_names[1] ~ "Int AGHY",
                                  param == param_names[2] ~ "Int AGPE",
                                  param == param_names[3] ~ "Int ELVI",
-                                 # param == param_names[4] ~ "Ag AGHY",
-                                 # param == param_names[5] ~ "Urban AGHY",
-                                 param == param_names[4] ~ "Nit AGHY",
-                                 # param == param_names[7] ~ "Ag AGPE",
-                                 # param == param_names[8] ~ "Ag ELVI",
-                                 # param == param_names[9] ~ "Urban AGPE",
-                                 # param == param_names[10] ~ "Urban ELVI",
-                                 param == param_names[5] ~ "Nit AGPE",
-                                 param == param_names[6] ~ "Nit ELVI"),
+                                 param == param_names[4] ~ "Ag AGHY",
+                                 param == param_names[5] ~ "Urban AGHY",
+                                 param == param_names[6] ~ "Nit AGHY",
+                                 param == param_names[7] ~ "Ag AGPE",
+                                 param == param_names[8] ~ "Ag ELVI",
+                                 param == param_names[9] ~ "Urban AGPE",
+                                 param == param_names[10] ~ "Urban ELVI",
+                                 param == param_names[11] ~ "Nit AGPE",
+                                 param == param_names[12] ~ "Nit ELVI"),
          spp_label = sub(".* ", "", param_label),
          param_type = sub(" .*", "", param_label)) %>% 
   pivot_longer( cols = -c(param, param_label, spp_label, param_type), names_to = "iteration") %>% 
@@ -593,7 +593,7 @@ posteriors_summary <- posteriors_df %>%
             upr = quantile(value, .975))
 
 posterior_hist <- ggplot(posteriors_df)+
-  stat_halfeye(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, alpha = .6)+
+  stat_halfeye(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
   # stat_histinterval(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, alpha = .6)+
   # geom_point(data = posteriors_summary, aes(x = mean, y = spp_label, color = spp_label))+
   # geom_linerange(data = posteriors_summary, aes(xmin = lwr, xmax = upr, y = spp_label, color = spp_label))+
@@ -613,7 +613,7 @@ ggsave(posterior_hist, filename = "posterior_hist_without_year.png")
 
 
 ################################################################################################################################
-##########  Getting and plotting prediction from the model with year ###############
+##########  Getting and plotting prediction from NitXYear ###############
 ################################################################################################################################
 
 min_year <- min(data$std_year)
@@ -698,6 +698,71 @@ year_trend_facet
 
 ggsave(year_trend_facet, filename = "year_trend_facet_N.png")
 
+################################################################################################################################
+##########  Plotting the posteriors from NitXYear model ###############
+################################################################################################################################
+
+
+param_names <- fit.3$summary.random$fixed$ID
+
+n_draws <- 500
+
+posteriors <- generate(
+  fit.3,
+  formula = ~ fixed_latent,
+  n.samples = n_draws) 
+rownames(posteriors) <- param_names
+colnames(posteriors) <- c( paste0("iter",1:n_draws))
+
+
+posteriors_df <- as_tibble(posteriors, rownames = "param") %>% 
+  mutate(param_label = case_when(param == param_names[1] ~ "Int AGHY",
+                                 param == param_names[2] ~ "Int AGPE",
+                                 param == param_names[3] ~ "Int ELVI",
+                                 # param == param_names[4] ~ "Ag AGHY",
+                                 # param == param_names[5] ~ "Urban AGHY",
+                                 param == param_names[4] ~ "Nit AGHY",
+                                 param == param_names[5] ~ "Year AGHY",
+                                 
+                                 # param == param_names[7] ~ "Ag AGPE",
+                                 # param == param_names[8] ~ "Ag ELVI",
+                                 # param == param_names[9] ~ "Urban AGPE",
+                                 # param == param_names[10] ~ "Urban ELVI",
+                                 param == param_names[6] ~ "Nit AGPE",
+                                 param == param_names[7] ~ "Nit ELVI",
+                                 param == param_names[8] ~ "Year AGPE",
+                                 param == param_names[9] ~ "Year ELVI",
+                                 param == param_names[10] ~ "Year:Nit AGHY",
+                                 param == param_names[11] ~ "Year:Nit AGPE",
+                                 param == param_names[12] ~ "Year:Nit ELVI",
+                                 
+  ),
+         spp_label = sub(".* ", "", param_label),
+         param_type = sub(" .*", "", param_label)) %>% 
+  pivot_longer( cols = -c(param, param_label, spp_label, param_type), names_to = "iteration") %>% 
+  mutate(model = "Year:Nit")
+
+posteriors_summary <- posteriors_df %>% 
+  group_by(param, param_label, spp_label, param_type) %>% 
+  summarize(mean = mean(value), 
+            lwr = quantile(value, .025),
+            upr = quantile(value, .975))
+
+posterior_hist <- ggplot(posteriors_df)+
+  stat_halfeye(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
+  # stat_histinterval(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, alpha = .6)+
+  # geom_point(data = posteriors_summary, aes(x = mean, y = spp_label, color = spp_label))+
+  # geom_linerange(data = posteriors_summary, aes(xmin = lwr, xmax = upr, y = spp_label, color = spp_label))+
+  
+  geom_vline(xintercept = 0)+
+  facet_wrap(~param_type, scales = "free")+
+  scale_color_manual(values = species_colors)+
+  scale_fill_manual(values = species_colors)+
+  scale_x_continuous(labels = scales::label_number(), guide = guide_axis(check.overlap = TRUE))+
+  theme_bw()
+
+posterior_hist
+ggsave(posterior_hist, filename = "posterior_hist_with_year.png")
 
 
 
