@@ -333,7 +333,7 @@ s_components.2 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg*std_year + Spp_c
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde) 
 
-s_components.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg*std_year + Spp_code*X_mean*std_year, model = "fixed")+
+s_components.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*X_mean*std_year, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde) 
@@ -553,7 +553,7 @@ nit_trend
 
 
 ################################################################################################################################
-##########  Plotting the posteriors from the model ###############
+##########  Plotting the posteriors from the model without year effect ###############
 ################################################################################################################################
 
 param_names <- fit.4$summary.random$fixed$ID
@@ -607,6 +607,97 @@ posterior_hist <- ggplot(posteriors_df)+
 
 posterior_hist
 ggsave(posterior_hist, filename = "posterior_hist_without_year.png")
+
+
+
+
+
+################################################################################################################################
+##########  Getting and plotting prediction from the model with year ###############
+################################################################################################################################
+
+min_year <- min(data$std_year)
+max_year <- max(data$std_year)
+
+mean_year <- mean(data$year)
+
+
+min_ag<- quantile(data$PercentAg, .05)
+max_ag <- quantile(data$PercentAg, .95)
+
+min_nit <- quantile(data$X_mean, .05)
+max_nit <- quantile(data$X_mean, .95)
+
+preddata <- expand.grid(Spp_code = c("AGHY","AGPE","ELVI"), std_year = seq( min_year, max_year, length.out = 20), PercentAg = c(min_ag, max_ag), X_mean = c(min_nit, max_nit),
+                        
+                        collector_index = 9999, scorer_index = 9999) %>% 
+  mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
+                             Spp_code == "AGPE" ~ species_names[2],
+                             Spp_code == "ELVI" ~ species_names[3])) %>% 
+  filter(PercentAg == min_ag & X_mean == max_nit | PercentAg == min_ag & X_mean == min_nit) %>%
+  mutate(disturbance_label = case_when(PercentAg == min_ag & X_mean == min_nit ~ "Undisturbed",
+                                       #PercentAg == max_ag & X_mean == max_nit ~ "Both",
+                                       #PercentAg == max_ag & X_mean == min_nit ~ "Agricultural",
+                                       PercentAg == min_ag & X_mean== max_nit ~ "Nitrogen"))
+
+# gennerating predictions and back-transforming the standardized year variable
+
+
+
+year.pred <- predict(
+  fit.3,
+  newdata = preddata,
+  formula = ~ invlogit(fixed), #+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
+  n.samples = 100) %>% 
+  mutate(year = std_year + mean_year)
+
+
+# binning the data for plotting
+# endo_herb_binned <- endo_herb %>% 
+#   mutate(binned_ag = cut(PercentAg, breaks = 2),
+#          binned_year = cut(year, breaks = 7)) %>%
+#   group_by(Spp_code, species,binned_ag, binned_year) %>%   
+#   summarise(mean_ag = mean(PercentAg),
+#             mean_year = mean(year),
+#             mean_endo = mean(Endo_status_liberal),
+#             mean_lon = mean(lon),
+#             mean_lat = mean(lat),
+#             sample = n(),
+#             se_endo = sd(Endo_status_liberal)/sqrt(sample)) %>% 
+#   mutate(ag_bin = case_when(mean_ag>=40~ paste("20"),
+#                             mean_ag<40 ~ paste("80")))
+
+
+
+
+histogram_data <- endo_herb%>%
+  mutate(disturbance_label = case_when(X_mean > mean(X_mean) ~ "Nitrogen",
+                                    X_mean < mean(X_mean) ~ "Undisturbed"))
+
+
+
+year_trend_facet <- ggplot(year.pred) +
+  geom_dots(data = histogram_data, aes(x = year, y = Endo_status_liberal, color = disturbance_label, side = ifelse(Endo_status_liberal == 1, "bottom", "top")),binwidth = 1.5)+
+  # geom_point(data = endo_herb_binned, aes(x = mean_year, y = mean_endo, size = sample, color = ag_bin))+
+  geom_ribbon(aes(year, ymin = q0.025, ymax = q0.975, group = disturbance_label, fill = disturbance_label), alpha = 0.3) +
+  geom_ribbon(aes(year, ymin = q0.25, ymax = q0.75, group = disturbance_label, fill = disturbance_label), alpha = 0.3) +
+  geom_line(aes(year, mean, group = disturbance_label, color = disturbance_label)) +
+  facet_wrap(~species+disturbance_label, nrow = 3)+
+  # scale_color_manual(values = c("#b35806", "black", "#542788"))+
+  # scale_fill_manual(values = c("#b35806", "black", "#542788"))+
+  guides(color = "none", fill = "none")+
+  labs(y = "Endophyte Prevalence", x = "Year", size = "Sample Size")+
+  theme_classic()+
+  theme(strip.background = element_blank(),
+        legend.text = element_text(face = "italic"),
+        plot.margin = unit(c(0,.1,.1,.1), "line"))+
+  lims(y = c(0,1))
+
+year_trend_facet
+
+ggsave(year_trend_facet, filename = "year_trend_facet_N.png")
+
 
 
 
