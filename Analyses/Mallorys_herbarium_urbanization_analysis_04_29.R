@@ -23,7 +23,7 @@ library(tidyterra)
 library(tidybayes) # using this for dotplots
 library(patchwork)
 library(ggmap)
-library(ROCR)
+library(pROC)
 
 invlogit<-function(x){exp(x)/(1+exp(x))}
 species_colors <- c("#1b9e77","#d95f02","#7570b3")
@@ -609,6 +609,28 @@ posterior_hist
 ggsave(posterior_hist, filename = "posterior_hist_without_year.png")
 
 
+
+################################################################################################################################
+##########  Assessing model fit     ###############
+################################################################################################################################
+
+# predicting the training data
+
+validation.pred <- predict(
+  fit.4,
+  newdata = endo_herb,
+  formula = ~ invlogit(fixed + scorer + collector + space_int),
+  n.samples = 100) 
+
+
+rocobj <- pROC::roc(endo_herb$Endo_status_liberal, validation.pred$mean)
+
+ROC_training_plot <- ggroc(rocobj) 
+ggsave(ROC_training_plot, filename = "ROC_training_plot.png", width = 4, height = 4)
+
+# AUC values
+rocobj$auc
+# 0.7892
 
 
 
