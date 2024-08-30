@@ -343,7 +343,13 @@ s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*Perce
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde) 
 
-s_components.5 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg*std_year + Spp_code*PercentUrban*std_year + Spp_code*X_mean*std_year, model = "fixed")+
+s_components.5 <-  ~ 0 + species(main = ~ 0 + Spp_code, model = "fixed") +  
+  species.ag(main = ~ 0 + Spp_code:PercentAg, model = "fixed") + species.urb(main = ~ 0 + Spp_code:PercentUrban, model = "fixed") + species.nit(main = ~ 0 +Spp_code:X_mean, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde) 
+
+s_components.5 <-  ~ 0 + fixed(main = ~ 0 + Spp_code*PercentAg*std_year + Spp_code*PercentUrban*std_year + Spp_code*X_mean*std_year, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde) 
@@ -451,44 +457,58 @@ fit.2 <- read_rds(file = "fit_wo_N.rds")
 ################################################################################################################################
 
 min_ag<- min(data$PercentAg)
+mean_ag <- mean(data$PercentAg)
 max_ag <- max(data$PercentAg)
 
 min_urb<- min(data$PercentUrban)
+mean_urb <- mean(data$PercentUrban)
 max_urb<- max(data$PercentUrban)
 
 min_nit<- min(data$X_mean)
+mean_nit <- mean(data$X_mean)
 max_nit<- max(data$X_mean)
 
 preddata.1 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
                    PercentAg = rep(seq(min_ag, max_ag, length.out = 50), times = 3),
-                   PercentUrban = 0,
-                   X_mean = 0,
+                   PercentUrban = mean_urb,
+                   X_mean = mean_nit,
                    collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
                              Spp_code == "ELVI" ~ species_names[3]))
 preddata.2 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
-                     PercentAg = 0,
+                     PercentAg = mean_ag,
                      PercentUrban = rep(seq(min_urb, max_urb, length.out = 50), times = 3),
-                     X_mean = 0,
+                     X_mean = mean_nit,
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
                              Spp_code == "ELVI" ~ species_names[3]))
 
 preddata.3 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
-                     PercentAg = 0,
-                     PercentUrban = 0,
+                     PercentAg = mean_ag,
+                     PercentUrban = mean_urb,
                      X_mean = rep(seq(min_nit, max_nit, length.out = 50), times = 3),
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
                              Spp_code == "ELVI" ~ species_names[3]))
 
+ag.pred <- predict(
+  fit.4,
+  newdata = preddata.1,
+  formula = ~ invlogit(fixed), #+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
+  n.samples = 100) 
 
+urb.pred <- predict(
+  fit.4,
+  newdata = preddata.2,
+  formula = ~ invlogit(fixed), #+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
+  n.samples = 100) 
 
-
-disturbance.pred <- predict(
+nit.pred <- predict(
   fit.4,
   newdata = preddata.3,
   formula = ~ invlogit(fixed), #+ collector_eval(collector_index) + scorer_eval(scorer_index)),
@@ -497,7 +517,7 @@ disturbance.pred <- predict(
   
 
 
-ag_trend <- ggplot(disturbance.pred) +
+ag_trend <- ggplot(ag.pred) +
   geom_line(aes(PercentAg, mean)) +
   geom_ribbon(aes(PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
   geom_ribbon(aes(PercentAg, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
@@ -505,14 +525,14 @@ ag_trend <- ggplot(disturbance.pred) +
   facet_wrap(~species)+  
   scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
   scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
-  labs(y = "Endophyte Prevalence", x = "Percent Ag (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
+  labs(y = "Endophyte Prevalence", x = "Percent Ag. (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
   theme_classic()+
   theme(strip.background = element_blank(),
         legend.text = element_text(face = "italic"),
         plot.margin = unit(c(0,.1,.1,.1), "line"))+
   lims(y = c(0,1))
 
-urb_trend <- ggplot(disturbance.pred) +
+urb_trend <- ggplot(urb.pred) +
   geom_line(aes(PercentUrban, mean)) +
   geom_ribbon(aes(PercentUrban, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
   geom_ribbon(aes(PercentUrban, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
@@ -520,7 +540,7 @@ urb_trend <- ggplot(disturbance.pred) +
   facet_wrap(~species)+  
   scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
   scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
-  labs(y = "Endophyte Prevalence", x = "Percent Ag (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
+  labs(y = "Endophyte Prevalence", x = "Percent Urban (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
   theme_classic()+
   theme(strip.background = element_blank(),
         legend.text = element_text(face = "italic"),
@@ -528,7 +548,7 @@ urb_trend <- ggplot(disturbance.pred) +
   lims(y = c(0,1))
 
 
-nit_trend <- ggplot(disturbance.pred) +
+nit_trend <- ggplot(nit.pred) +
   geom_line(aes(X_mean, mean)) +
   geom_ribbon(aes(X_mean, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
   geom_ribbon(aes(X_mean, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
@@ -536,7 +556,7 @@ nit_trend <- ggplot(disturbance.pred) +
   facet_wrap(~species)+  
   scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
   scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
-  labs(y = "Endophyte Prevalence", x = "Percent Ag (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
+  labs(y = "Endophyte Prevalence", x = "Nit", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
   theme_classic()+
   theme(strip.background = element_blank(),
         legend.text = element_text(face = "italic"),
@@ -560,6 +580,7 @@ param_names <- fit.4$summary.random$fixed$ID
 
 n_draws <- 500
 
+# we can sample values from the join posteriors of the parameters with the addition of "_latent" to the parameter name
 posteriors <- generate(
   fit.4,
   formula = ~ fixed_latent,
@@ -568,47 +589,59 @@ rownames(posteriors) <- param_names
 colnames(posteriors) <- c( paste0("iter",1:n_draws))
 
 
-posteriors_df <- as_tibble(posteriors, rownames = "param") %>% 
-  mutate(param_label = case_when(param == param_names[1] ~ "Int AGHY",
-                                 param == param_names[2] ~ "Int AGPE",
-                                 param == param_names[3] ~ "Int ELVI",
-                                 param == param_names[4] ~ "Ag AGHY",
-                                 param == param_names[5] ~ "Urban AGHY",
-                                 param == param_names[6] ~ "Nit AGHY",
-                                 param == param_names[7] ~ "Ag AGPE",
-                                 param == param_names[8] ~ "Ag ELVI",
-                                 param == param_names[9] ~ "Urban AGPE",
-                                 param == param_names[10] ~ "Urban ELVI",
-                                 param == param_names[11] ~ "Nit AGPE",
-                                 param == param_names[12] ~ "Nit ELVI"),
-         spp_label = sub(".* ", "", param_label),
-         param_type = sub(" .*", "", param_label)) %>% 
-  pivot_longer( cols = -c(param, param_label, spp_label, param_type), names_to = "iteration") %>% 
-  mutate(model = "No Year")
+posteriors_df <- as_tibble(t(posteriors), rownames = "iteration")
+  
 
-posteriors_summary <- posteriors_df %>% 
-  group_by(param, param_label, spp_label, param_type) %>% 
-  summarize(mean = mean(value), 
-            lwr = quantile(value, .025),
-            upr = quantile(value, .975))
 
-posterior_hist <- ggplot(posteriors_df)+
-  stat_halfeye(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
+# Calculate the effects of the predictor, given that the reference level is for AGHY
+effects_df <- posteriors_df %>% 
+    mutate(NIT.AGHY = X_mean,
+           NIT.AGPE = X_mean+`Spp_codeAGPE:X_mean`,
+           NIT.ELVI = X_mean+`Spp_codeELVI:X_mean`,
+           AG.AGHY = PercentAg,
+           AG.AGPE = PercentAg+`Spp_codeAGPE:PercentAg`,
+           AG.ELVI = PercentAg+`Spp_codeELVI:PercentAg`,
+           URB.AGHY = PercentUrban,
+           URB.AGPE = PercentUrban+`Spp_codeAGPE:PercentUrban`,
+           URB.ELVI = PercentUrban+`Spp_codeELVI:PercentUrban`,
+           INT.AGHY = Spp_codeAGHY,
+           INT.AGPE = Spp_codeAGPE,
+           INT.ELVI = Spp_codeELVI) %>% 
+  select(-all_of(param_names)) %>% 
+  pivot_longer( cols = -c(iteration), names_to = "param") %>% 
+  mutate(model = "No Year") %>% 
+  mutate(spp_label = sub(".*\\.", "", param),
+         param_label = sub("\\..*","", param))
+  
+  
+
+posterior_hist <- ggplot(effects_df)+
+  stat_halfeye(aes(x = value, y = spp_label, fill  = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
+  
+  # stat_halfeye(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
   # stat_histinterval(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, alpha = .6)+
   # geom_point(data = posteriors_summary, aes(x = mean, y = spp_label, color = spp_label))+
   # geom_linerange(data = posteriors_summary, aes(xmin = lwr, xmax = upr, y = spp_label, color = spp_label))+
   
   geom_vline(xintercept = 0)+
-  facet_wrap(~param_type, scales = "free")+
+  facet_wrap(~param_label, scales = "free")+
   scale_color_manual(values = species_colors)+
   scale_fill_manual(values = species_colors)+
   scale_x_continuous(labels = scales::label_number(), guide = guide_axis(check.overlap = TRUE))+
   theme_bw()
 
 posterior_hist
-ggsave(posterior_hist, filename = "posterior_hist_without_year.png")
+ggsave(posterior_hist, filename = "posterior_hist_without_year_intxn.png")
 
 
+
+
+effects_summary <- effects_df %>% 
+  group_by(param, param_label, spp_label) %>% 
+  summarize(mean = mean(value), 
+            lwr = quantile(value, .025),
+            upr = quantile(value, .975),
+            prob_pos = sum(value>0)/500)
 
 ################################################################################################################################
 ##########  Assessing model fit     ###############
