@@ -95,7 +95,10 @@ endo_herb <- read_csv(file = "Analyses/Mallorys_EndoHerb_withNitrogen.csv") %>%
   mutate(species = case_when(spp_code == "AGHY" ~ "A. hyemalis",
                              spp_code == "AGPE" ~ "A. perennans",
                              spp_code == "ELVI" ~ "E. virginicus")) %>% 
-  mutate(std_year = (year-mean(year, na.rm = T))) %>%  # I am mean centering but not scaling by standard deviation to preserve units for interpretation of the parameter values
+  mutate(std_year = (year-mean(year, na.rm = T)),
+         std_nit = (X_mean - mean(X_mean, na.rm = T))/sd(X_mean, na.rm = T),
+         std_urb = (PercentUrban - mean(PercentUrban, na.rm = T))/sd(PercentUrban, na.rm = T),
+         std_ag = (PercentAg - mean(PercentAg, na.rm = T))/sd(PercentAg, na.rm = T)) %>%  # I am mean centering but not scaling by standard deviation to preserve units for interpretation of the parameter values
   filter(scorer_id != "Scorer26") %>% 
   filter(!is.na(Endo_status_liberal)) %>%
   filter(!is.na(spp_code)) %>% 
@@ -323,36 +326,48 @@ pc_prec <- list(prior = "pcprec", param = c(1, 0.1))
 
 # comparing different levels of interactions
 
-s_components.1 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg*std_year*PercentUrban, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde) 
-  
-s_components.2 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg*std_year + Spp_code*PercentUrban*std_year, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde) 
+# s_components.1 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg*std_year*PercentUrban, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde) 
+#   
+# s_components.2 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg*std_year + Spp_code*PercentUrban*std_year, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde) 
+# 
+# s_components.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*X_mean*std_year, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde) 
+# 
+# s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*X_mean, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde) 
 
-s_components.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*X_mean*std_year, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde) 
 
 s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*X_mean, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde) 
 
-s_components.5 <-  ~ 0 + species(main = ~ 0 + Spp_code, model = "fixed") +  
-  species.ag(main = ~ 0 + Spp_code:PercentAg, model = "fixed") + species.urb(main = ~ 0 + Spp_code:PercentUrban, model = "fixed") + species.nit(main = ~ 0 +Spp_code:X_mean, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde) 
 
-s_components.5 <-  ~ 0 + fixed(main = ~ 0 + Spp_code*PercentAg*std_year + Spp_code*PercentUrban*std_year + Spp_code*X_mean*std_year, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde) 
+# s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_ag + Spp_code*std_urb + Spp_code*std_nit, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde) 
+
+# s_components.5 <-  ~ 0 + species(main = ~ 0 + Spp_code, model = "fixed") +  
+#   species.ag(main = ~ 0 + Spp_code:PercentAg, model = "fixed") + species.urb(main = ~ 0 + Spp_code:PercentUrban, model = "fixed") + species.nit(main = ~ 0 +Spp_code:X_mean, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde) 
+# 
+# s_components.5 <-  ~ 0 + fixed(main = ~ 0 + Spp_code*PercentAg*std_year + Spp_code*PercentUrban*std_year + Spp_code*X_mean*std_year, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde) 
 # putting the components with the formula
 s_formula <- Endo_status_liberal ~ .
 
