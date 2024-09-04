@@ -1,5 +1,5 @@
 # Purpose: Fits spatial model of change in Epichloe endophyte prevalence in herbarium specimens and assesses effect of different anthropogenic land-use on trends.
-# Authors: Mallory Tucker, and Joshua Fowler
+# Authors: Mallory Tucker and Joshua Fowler
 # Updated: Feb 13, 2024
 
 library(devtools)
@@ -39,67 +39,68 @@ species_names <- c("A. hyemalis", "A. perennans", "E. virginicus")
 # This is where I'm loading in the version of the data set without land cover and nitrogen data, but we ought to be able to replace this easily
 
 
-Mallorypath <- "C:/Users/mnt4/Documents/sp23bios310/"
+Mallorypath <- "C:/Users/malpa/OneDrive/Documents/EndoHerbQGIS/"
 Joshpath <- "~/Dropbox/Josh&Tom - shared/Endo_Herbarium/"
-path <- Joshpath
+path <- Mallorypath
 
 
-# endo_herb_georef <- read_csv(file = paste0(path, "Zonalhist_NLCD_10km_.csv")) %>%
-#   filter(Country != "Canada") %>%
-#   mutate(Spp_code = case_when(grepl("AGHY", Sample_id) ~ "AGHY",
-#                               grepl("ELVI", Sample_id) ~ "ELVI",
-#                               grepl("AGPE", Sample_id) ~ "AGPE")) %>% 
-#   mutate(species_index = as.factor(case_when(Spp_code == "AGHY" ~ "1",
-#                                              Spp_code == "AGPE" ~ "2",
-#                                              Spp_code == "ELVI" ~ "3"))) %>% 
-#   mutate(species = case_when(Spp_code == "AGHY" ~ "A. hyemalis",
-#                              Spp_code == "AGPE" ~ "A. perennans",
-#                              Spp_code == "ELVI" ~ "E. virginicus")) %>% 
-#   mutate(decade = floor(year/10)*10)%>%
-#   mutate(DevelopedOpenSpace = HISTO_21, 
-#          DevelopedLowIntensity = HISTO_22,
-#          MediumDeveloped = HISTO_23,
-#          HighDeveloped = HISTO_24,
-#          PastureHay = HISTO_81,
-#          CultivatedCrops = HISTO_82,
-#          TotalAg = PastureHay + CultivatedCrops,
-#          TotalPixels = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24 + HISTO_0 + HISTO_11 +HISTO_12 + HISTO_31 +HISTO_41 + HISTO_42 + HISTO_43 + HISTO_52 + HISTO_71+ HISTO_90 + TotalAg + HISTO_95,
-#          TotalDeveloped = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24,
-#          OtherLC = (TotalPixels - (TotalAg + TotalDeveloped))/TotalPixels *100,
-#          PercentUrban = TotalDeveloped/TotalPixels * 100,
-#          PercentAg = TotalAg/TotalPixels * 100)
-# 
-# # Doing some filtering to remove NA's and some data points that probably aren't accurate species id's
-# endo_herb <- endo_herb_georef %>% 
-#   filter(!is.na(Endo_statu)) %>%
-#   filter(!is.na(Spp_code)) %>% 
-#   filter(!is.na(lon) & !is.na(year)) %>% 
-#   filter(lon>-110 ) %>% 
-#   filter(Country != "Canada" ) %>% 
-#   mutate(year_bin = case_when(year<1970 ~ "pre-1970",
-#                               year>=1970 ~ "post-1970")) %>% 
-#   mutate(endo_status_text = case_when(Endo_statu == 0 ~ "E-",
-#                                       Endo_statu == 1 ~ "E+"))  
-# #loading in nitrogen data too
-# nit <- read.csv(file = "C:/Users/mnt4/Documents/sp23bios310/Nitdep_zonal_stat_10km_.csv")
-# nitendoherb <- merge(nit, endo_herb)
-# endo_herb <- nitendoherb
-# 
-# write.csv(endo_herb, file = "EndoHerb_withNitrogen.csv")
-endo_herb <- read_csv(file = "Analyses/Mallorys_EndoHerb_withNitrogen.csv") %>% 
-  mutate(sample_temp = Sample_id) %>% 
-  separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>% 
+endo_herb_georef <- read_csv(file = paste0(path, "Zonalhist_NLCD_10km_.csv")) %>%
+  filter(Country != "Canada") %>%
+  mutate(Spp_code = case_when(grepl("AGHY", Sample_id) ~ "AGHY",
+                              grepl("ELVI", Sample_id) ~ "ELVI",
+                              grepl("AGPE", Sample_id) ~ "AGPE")) %>%
+  mutate(species_index = as.factor(case_when(Spp_code == "AGHY" ~ "1",
+                                             Spp_code == "AGPE" ~ "2",
+                                             Spp_code == "ELVI" ~ "3"))) %>%
+  mutate(species = case_when(Spp_code == "AGHY" ~ "A. hyemalis",
+                             Spp_code == "AGPE" ~ "A. perennans",
+                             Spp_code == "ELVI" ~ "E. virginicus")) %>%
+  mutate(decade = floor(year/10)*10)%>%
+  mutate(DevelopedOpenSpace = HISTO_21,
+         DevelopedLowIntensity = HISTO_22,
+         MediumDeveloped = HISTO_23,
+         HighDeveloped = HISTO_24,
+         PastureHay = HISTO_81,
+         CultivatedCrops = HISTO_82,
+         TotalAg = PastureHay + CultivatedCrops,
+         TotalPixels = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24 + HISTO_0 + HISTO_11 +HISTO_12 + HISTO_31 +HISTO_41 + HISTO_42 + HISTO_43 + HISTO_52 + HISTO_71+ HISTO_90 + TotalAg + HISTO_95,
+         TotalDeveloped = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24,
+         OtherLC = (TotalPixels - (TotalAg + TotalDeveloped))/TotalPixels *100,
+         PercentUrban = TotalDeveloped/TotalPixels * 100,
+         PercentAg = TotalAg/TotalPixels * 100)
+
+# Doing some filtering to remove NA's and some data points that probably aren't accurate species id's
+endo_herb <- endo_herb_georef %>%
+  filter(!is.na(Endo_statu)) %>%
+  filter(!is.na(Spp_code)) %>%
+  filter(!is.na(lon) & !is.na(year)) %>%
+  filter(lon>-110 ) %>%
+  filter(Country != "Canada" ) %>%
+  mutate(year_bin = case_when(year<1970 ~ "pre-1970",
+                              year>=1970 ~ "post-1970")) %>%
+  mutate(endo_status_text = case_when(Endo_statu == 0 ~ "E-",
+                                      Endo_statu == 1 ~ "E+"))
+#loading in nitrogen data too
+nit <- read.csv(file = paste0(path, "Nitdep_zonal_stat_10km_.csv"))
+nitendoherb <- merge(nit, endo_herb)
+endo_herb <- nitendoherb
+
+write.csv(endo_herb, file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/EndoHerb_withNitrogen.csv")
+
+endo_herb <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/EndoHerb_withNitrogen.csv") %>%
+  mutate(sample_temp = Sample_id) %>%
+  separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
   mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
                                              spp_code == "AGPE" ~ "2",
-                                             spp_code == "ELVI" ~ "3"))) %>% 
+                                             spp_code == "ELVI" ~ "3"))) %>%
   mutate(species = case_when(spp_code == "AGHY" ~ "A. hyemalis",
                              spp_code == "AGPE" ~ "A. perennans",
-                             spp_code == "ELVI" ~ "E. virginicus")) %>% 
+                             spp_code == "ELVI" ~ "E. virginicus")) %>%
   mutate(std_year = (year-mean(year, na.rm = T))) %>%  # I am mean centering but not scaling by standard deviation to preserve units for interpretation of the parameter values
-  filter(scorer_id != "Scorer26") %>% 
+  filter(scorer_id != "Scorer26") %>%
   filter(!is.na(Endo_status_liberal)) %>%
-  filter(!is.na(spp_code)) %>% 
-  filter(!is.na(lon) & !is.na(year)) %>% 
+  filter(!is.na(spp_code)) %>%
+  filter(!is.na(lon) & !is.na(year)) %>%
   filter(!is.na(PercentAg), !is.na(X_mean))
 
 # Looking at just AGHY for now, but we can likely fit one model for all species
@@ -268,7 +269,7 @@ mesh <- fm_mesh_2d_inla(
   # crs=CRS(proj4string(bdry_polygon))
 ) # cutoff is min edge
 # plot it
-# plot(mesh)
+#plot(mesh)
 
 
 mesh_plot <- ggplot() +
@@ -484,11 +485,21 @@ preddata.3 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50)
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
                              Spp_code == "ELVI" ~ species_names[3]))
+disturbance.pred1 <- predict(
+  fit.4,
+  newdata = preddata.1,
+  formula = ~ invlogit(fixed), #+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
+  n.samples = 100) 
 
+disturbance.pred2 <- predict(
+  fit.4,
+  newdata = preddata.2,
+  formula = ~ invlogit(fixed), #+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
+  n.samples = 100) 
 
-
-
-disturbance.pred <- predict(
+disturbance.pred3 <- predict(
   fit.4,
   newdata = preddata.3,
   formula = ~ invlogit(fixed), #+ collector_eval(collector_index) + scorer_eval(scorer_index)),
@@ -497,59 +508,58 @@ disturbance.pred <- predict(
   
 
 
-ag_trend <- ggplot(disturbance.pred) +
-  geom_line(aes(PercentAg, mean)) +
-  geom_ribbon(aes(PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
-  geom_ribbon(aes(PercentAg, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
+ag_trend <- ggplot(disturbance.pred1) +
+  geom_line(aes(x = PercentAg,y = mean)) +
+  geom_ribbon(aes(x = PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
+  geom_ribbon(aes(x = PercentAg, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
   # geom_point(data = ag_data_binned, aes(x = mean_ag, y = mean_endo, size = sample, fill = year_bin), color = "black", shape = 21)+
   facet_wrap(~species)+  
   scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
   scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
-  labs(y = "Endophyte Prevalence", x = "Percent Ag (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
+  labs(y = "Endophyte Prevalence", x = "Percent Agriculture (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
   theme_classic()+
   theme(strip.background = element_blank(),
         legend.text = element_text(face = "italic"),
-        plot.margin = unit(c(0,.1,.1,.1), "line"))+
+        plot.margin = unit(c(0,.1,.1,.1), "lines"))+
   lims(y = c(0,1))
 
-urb_trend <- ggplot(disturbance.pred) +
-  geom_line(aes(PercentUrban, mean)) +
-  geom_ribbon(aes(PercentUrban, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
-  geom_ribbon(aes(PercentUrban, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
+urb_trend <- ggplot(disturbance.pred2) +
+  geom_line(aes(x = PercentUrban, y = mean)) +
+  geom_ribbon(aes(x = PercentUrban, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
+  geom_ribbon(aes(x = PercentUrban, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
   # geom_point(data = ag_data_binned, aes(x = mean_ag, y = mean_endo, size = sample, fill = year_bin), color = "black", shape = 21)+
   facet_wrap(~species)+  
   scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
   scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
-  labs(y = "Endophyte Prevalence", x = "Percent Ag (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
+  labs(y = "Endophyte Prevalence", x = "Urban Cover (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
   theme_classic()+
   theme(strip.background = element_blank(),
         legend.text = element_text(face = "italic"),
-        plot.margin = unit(c(0,.1,.1,.1), "line"))+
+        plot.margin = unit(c(0,.1,.1,.1), "lines"))+
   lims(y = c(0,1))
 
-
-nit_trend <- ggplot(disturbance.pred) +
-  geom_line(aes(X_mean, mean)) +
-  geom_ribbon(aes(X_mean, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
-  geom_ribbon(aes(X_mean, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
+nit_trend <- ggplot(disturbance.pred3) +
+  geom_line(aes(x = X_mean, y = mean)) +
+  geom_ribbon(aes (x = X_mean, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
+  geom_ribbon(aes(x = X_mean, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
   # geom_point(data = ag_data_binned, aes(x = mean_ag, y = mean_endo, size = sample, fill = year_bin), color = "black", shape = 21)+
   facet_wrap(~species)+  
   scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
   scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
-  labs(y = "Endophyte Prevalence", x = "Percent Ag (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
+  labs(y = "Endophyte Prevalence", x = "Nitrogen Deposition (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
   theme_classic()+
   theme(strip.background = element_blank(),
         legend.text = element_text(face = "italic"),
-        plot.margin = unit(c(0,.1,.1,.1), "line"))+
+        plot.margin = unit(c(0,.1,.1,.1), "lines"))+
   lims(y = c(0,1))
 
 
 ag_trend
 urb_trend
 nit_trend
-
-
-
+ggsave(ag_trend, filename = "ag_trend.png")
+ggsave(urb_trend, filename = "urb_trend.png")
+ggsave(nit_trend, filename = "nit_trend.png")
 
 
 ################################################################################################################################
