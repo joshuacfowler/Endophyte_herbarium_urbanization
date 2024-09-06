@@ -44,48 +44,48 @@ Joshpath <- "~/Dropbox/Josh&Tom - shared/Endo_Herbarium/"
 path <- Mallorypath
 
 
-endo_herb_georef <- read_csv(file = paste0(path, "Zonalhist_NLCD_10km_.csv")) %>%
-  filter(Country != "Canada") %>%
-  mutate(Spp_code = case_when(grepl("AGHY", Sample_id) ~ "AGHY",
-                              grepl("ELVI", Sample_id) ~ "ELVI",
-                              grepl("AGPE", Sample_id) ~ "AGPE")) %>%
-  mutate(species_index = as.factor(case_when(Spp_code == "AGHY" ~ "1",
-                                             Spp_code == "AGPE" ~ "2",
-                                             Spp_code == "ELVI" ~ "3"))) %>%
-  mutate(species = case_when(Spp_code == "AGHY" ~ "A. hyemalis",
-                             Spp_code == "AGPE" ~ "A. perennans",
-                             Spp_code == "ELVI" ~ "E. virginicus")) %>%
-  mutate(decade = floor(year/10)*10)%>%
-  mutate(DevelopedOpenSpace = HISTO_21,
-         DevelopedLowIntensity = HISTO_22,
-         MediumDeveloped = HISTO_23,
-         HighDeveloped = HISTO_24,
-         PastureHay = HISTO_81,
-         CultivatedCrops = HISTO_82,
-         TotalAg = PastureHay + CultivatedCrops,
-         TotalPixels = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24 + HISTO_0 + HISTO_11 +HISTO_12 + HISTO_31 +HISTO_41 + HISTO_42 + HISTO_43 + HISTO_52 + HISTO_71+ HISTO_90 + TotalAg + HISTO_95,
-         TotalDeveloped = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24,
-         OtherLC = (TotalPixels - (TotalAg + TotalDeveloped))/TotalPixels *100,
-         PercentUrban = TotalDeveloped/TotalPixels * 100,
-         PercentAg = TotalAg/TotalPixels * 100)
-
-# Doing some filtering to remove NA's and some data points that probably aren't accurate species id's
-endo_herb <- endo_herb_georef %>%
-  filter(!is.na(Endo_statu)) %>%
-  filter(!is.na(Spp_code)) %>%
-  filter(!is.na(lon) & !is.na(year)) %>%
-  filter(lon>-110 ) %>%
-  filter(Country != "Canada" ) %>%
-  mutate(year_bin = case_when(year<1970 ~ "pre-1970",
-                              year>=1970 ~ "post-1970")) %>%
-  mutate(endo_status_text = case_when(Endo_statu == 0 ~ "E-",
-                                      Endo_statu == 1 ~ "E+"))
-#loading in nitrogen data too
-nit <- read.csv(file = paste0(path, "Nitdep_zonal_stat_10km_.csv"))
-nitendoherb <- merge(nit, endo_herb)
-endo_herb <- nitendoherb
-
-write.csv(endo_herb, file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/EndoHerb_withNitrogen.csv")
+# endo_herb_georef <- read_csv(file = paste0(path, "Zonalhist_NLCD_10km_.csv")) %>%
+#   filter(Country != "Canada") %>%
+#   mutate(Spp_code = case_when(grepl("AGHY", Sample_id) ~ "AGHY",
+#                               grepl("ELVI", Sample_id) ~ "ELVI",
+#                               grepl("AGPE", Sample_id) ~ "AGPE")) %>%
+#   mutate(species_index = as.factor(case_when(Spp_code == "AGHY" ~ "1",
+#                                              Spp_code == "AGPE" ~ "2",
+#                                              Spp_code == "ELVI" ~ "3"))) %>%
+#   mutate(species = case_when(Spp_code == "AGHY" ~ "A. hyemalis",
+#                              Spp_code == "AGPE" ~ "A. perennans",
+#                              Spp_code == "ELVI" ~ "E. virginicus")) %>%
+#   mutate(decade = floor(year/10)*10)%>%
+#   mutate(DevelopedOpenSpace = HISTO_21,
+#          DevelopedLowIntensity = HISTO_22,
+#          MediumDeveloped = HISTO_23,
+#          HighDeveloped = HISTO_24,
+#          PastureHay = HISTO_81,
+#          CultivatedCrops = HISTO_82,
+#          TotalAg = PastureHay + CultivatedCrops,
+#          TotalPixels = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24 + HISTO_0 + HISTO_11 +HISTO_12 + HISTO_31 +HISTO_41 + HISTO_42 + HISTO_43 + HISTO_52 + HISTO_71+ HISTO_90 + TotalAg + HISTO_95,
+#          TotalDeveloped = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24,
+#          OtherLC = (TotalPixels - (TotalAg + TotalDeveloped))/TotalPixels *100,
+#          PercentUrban = TotalDeveloped/TotalPixels * 100,
+#          PercentAg = TotalAg/TotalPixels * 100)
+# 
+# # Doing some filtering to remove NA's and some data points that probably aren't accurate species id's
+# endo_herb <- endo_herb_georef %>%
+#   filter(!is.na(Endo_statu)) %>%
+#   filter(!is.na(Spp_code)) %>%
+#   filter(!is.na(lon) & !is.na(year)) %>%
+#   filter(lon>-110 ) %>%
+#   filter(Country != "Canada" ) %>%
+#   mutate(year_bin = case_when(year<1970 ~ "pre-1970",
+#                               year>=1970 ~ "post-1970")) %>%
+#   mutate(endo_status_text = case_when(Endo_statu == 0 ~ "E-",
+#                                       Endo_statu == 1 ~ "E+"))
+# #loading in nitrogen data too
+# nit <- read.csv(file = paste0(path, "Nitdep_zonal_stat_10km_.csv"))
+# nitendoherb <- merge(nit, endo_herb)
+# endo_herb <- nitendoherb
+# 
+# write.csv(endo_herb, file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/EndoHerb_withNitrogen.csv")
 
 endo_herb <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/EndoHerb_withNitrogen.csv") %>%
   mutate(sample_temp = Sample_id) %>%
@@ -95,18 +95,12 @@ endo_herb <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbar
                                              spp_code == "ELVI" ~ "3"))) %>%
   mutate(species = case_when(spp_code == "AGHY" ~ "A. hyemalis",
                              spp_code == "AGPE" ~ "A. perennans",
-<<<<<<< HEAD
                              spp_code == "ELVI" ~ "E. virginicus")) %>%
-  mutate(std_year = (year-mean(year, na.rm = T))) %>%  # I am mean centering but not scaling by standard deviation to preserve units for interpretation of the parameter values
-  filter(scorer_id != "Scorer26") %>%
-=======
-                             spp_code == "ELVI" ~ "E. virginicus")) %>% 
   mutate(std_year = (year-mean(year, na.rm = T)),
          std_nit = (X_mean - mean(X_mean, na.rm = T))/sd(X_mean, na.rm = T),
          std_urb = (PercentUrban - mean(PercentUrban, na.rm = T))/sd(PercentUrban, na.rm = T),
          std_ag = (PercentAg - mean(PercentAg, na.rm = T))/sd(PercentAg, na.rm = T)) %>%  # I am mean centering but not scaling by standard deviation to preserve units for interpretation of the parameter values
   filter(scorer_id != "Scorer26") %>% 
->>>>>>> 482f03054b85d85ba3a29ba9e824747dd4636cf9
   filter(!is.na(Endo_status_liberal)) %>%
   filter(!is.na(spp_code)) %>%
   filter(!is.na(lon) & !is.na(year)) %>%
@@ -229,6 +223,101 @@ summary_endo_herb <- endo_herb %>%
   dplyr::summarize(n(),
             avg_seed = mean(seed_score, na.rm = T),
             avg_month = mode(as.numeric(month)))
+
+#########################################################################################
+####################### Map Figure Code ################################################
+########################################################################################
+
+#load in map outline data
+outline_map <- map_data("world")
+states_shape <- map_data("state")
+counties <- map_data("county")
+
+#Join map outline data with endo_herb data
+endo_herb$region <- tolower(paste(endo_herb$State, endo_herb$County, sep = ","))
+
+tiny_df_urb <- data.frame(endo_herb$region, endo_herb$PercentUrban)
+counties$region <- tolower(paste(counties$region, counties$subregion, sep = ","))
+colnames(tiny_df_urb) <- c("region", "PercentUrban")
+
+counties_data <- counties %>%
+  left_join(tiny_df_urb, by = "region")
+
+counties_data <- na.omit(counties_data)
+
+# Create the choropleth map
+endo_urb_map <- ggplot(data = counties_data) +
+  geom_map(data = outline_map, map = outline_map, aes(long, lat, map_id = region), color = "darkgray", linewidth = .3, fill = "#E8E7E7")+
+  geom_map(data = states_shape, map = states_shape, aes(long, lat, map_id = region), color = "gray", linewidth = .2, fill = "#E8E7E7")+
+  geom_polygon(aes(x = long, y = lat, group = group, fill = PercentUrban), color = "darkgray", linewidth = .1) +
+  coord_cartesian(xlim = c(-109, -68), ylim = c(25, 48))+
+  scale_fill_gradient(low = "lightgray", high = "#021475", na.value = NA)+
+  labs(x = "Longitude", y = "Latitude", fill = "Urban Cover %")+
+  theme_light()+
+  theme(legend.text = element_text(face = "italic"))+
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())
+
+###############################################################################
+############################ agricultural map ################################
+###############################################################################
+
+#Join map outline data with endo_herb data
+tiny_df_ag <- data.frame(endo_herb$region, endo_herb$PercentAg)
+colnames(tiny_df_ag) <- c("region", "PercentAg")
+
+counties_data_ag <- counties %>%
+  left_join(tiny_df_ag, by = "region")
+
+counties_data_ag <- na.omit(counties_data_ag)
+
+# Create the choropleth map
+endo_ag_map <- ggplot(data = counties_data_ag) +
+  geom_map(data = outline_map, map = outline_map, aes(long, lat, map_id = region), color = "darkgray", linewidth = .3, fill = "#E8E7E7")+
+  geom_map(data = states_shape, map = states_shape, aes(long, lat, map_id = region), color = "gray", linewidth = .2, fill = "#E8E7E7")+
+  geom_polygon(aes(x = long, y = lat, group = group, fill = PercentAg), color = "darkgray", linewidth = .1) +
+  # coord_fixed(ratio = 1) +
+  coord_cartesian(xlim = c(-109, -68), ylim = c(25, 48))+
+  scale_fill_gradient(low = "lightgray", high = "#B38600", na.value = NA)+
+  theme_light() +
+  theme(legend.text = element_text(face = "italic")) +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())+
+  labs(x = "Longitude", y = "Latitude", fill = "Agricultural %")
+
+
+#################################################################################
+################################## nitrogen map#################################
+################################################################################
+
+#Join map outline data with endo_herb data
+tiny_df_nit <- data.frame(endo_herb$region, endo_herb$NO3_mean)
+colnames(tiny_df_nit) <- c("region", "NO3_mean")
+
+counties_data_nit <- counties %>%
+  left_join(tiny_df_nit, by = "region")
+
+counties_data_nit <- na.omit(counties_data_nit)
+
+# Create the choropleth map
+endo_nit_map <- ggplot(data = counties_data_nit) +
+  geom_map(data = outline_map, map = outline_map, aes(long, lat, map_id = region), color = "darkgray", linewidth = .3, fill = "#E8E7E7")+
+  geom_map(data = states_shape, map = states_shape, aes(long, lat, map_id = region), color = "gray", linewidth = .2, fill = "#E8E7E7")+
+  geom_polygon(aes(x = long, y = lat, group = group, fill = NO3_mean), color = "darkgray", linewidth = .1) +
+  # coord_fixed(ratio = 1) +
+  coord_cartesian(xlim = c(-109, -68), ylim = c(25, 48))+
+  scale_fill_gradient(low = "lightgray", high = "#BF00A0", na.value = NA)+
+  theme_light() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())+
+  theme(legend.text = element_text(face = "italic")) +
+  labs(x = "Longitude", y = "Latitude", fill = "Nitrogen Dep")
+
+#Compile maps into one panel
+mapfig <-  endo_ag_map +endo_urb_map + endo_nit_map + plot_layout(ncol = 3) + plot_annotation(tag_levels = "A")
+#Save map file
+ggsave(mapfig, file = "Map_Figure.png", width = 15, height = 3)
+
 
 ##########################################################################################
 ############ Setting up and running INLA model with inlabru ############################### 
@@ -491,10 +580,10 @@ mean_nit <- mean(data$X_mean)
 max_nit<- max(data$X_mean)
 
 preddata.1 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
-                   PercentAg = rep(seq(min_ag, max_ag, length.out = 50), times = 3),
-                   PercentUrban = mean_urb,
-                   X_mean = mean_nit,
-                   collector_index = 9999, scorer_index = 9999) %>% 
+                     PercentAg = rep(seq(min_ag, max_ag, length.out = 50), times = 3),
+                     PercentUrban = mean_urb,
+                     X_mean = mean_nit,
+                     collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
                              Spp_code == "ELVI" ~ species_names[3]))
@@ -515,29 +604,14 @@ preddata.3 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50)
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
                              Spp_code == "ELVI" ~ species_names[3]))
-disturbance.pred1 <- predict(
-  fit.4,
-  newdata = preddata.1,
-  formula = ~ invlogit(fixed), #+ collector_eval(collector_index) + scorer_eval(scorer_index)),
-  probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
-  n.samples = 100) 
 
-<<<<<<< HEAD
-disturbance.pred2 <- predict(
-  fit.4,
-  newdata = preddata.2,
-=======
 ag.pred <- predict(
   fit.4,
   newdata = preddata.1,
->>>>>>> 482f03054b85d85ba3a29ba9e824747dd4636cf9
   formula = ~ invlogit(fixed), #+ collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
   n.samples = 100) 
 
-<<<<<<< HEAD
-disturbance.pred3 <- predict(
-=======
 urb.pred <- predict(
   fit.4,
   newdata = preddata.2,
@@ -546,102 +620,67 @@ urb.pred <- predict(
   n.samples = 100) 
 
 nit.pred <- predict(
->>>>>>> 482f03054b85d85ba3a29ba9e824747dd4636cf9
   fit.4,
   newdata = preddata.3,
   formula = ~ invlogit(fixed), #+ collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
   n.samples = 100) 
-  
 
+values <-  c("#b2abd2", "#5e3c99")
 
-<<<<<<< HEAD
-ag_trend <- ggplot(disturbance.pred1) +
-  geom_line(aes(x = PercentAg,y = mean)) +
-  geom_ribbon(aes(x = PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
-  geom_ribbon(aes(x = PercentAg, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
-=======
 ag_trend <- ggplot(ag.pred) +
   geom_line(aes(PercentAg, mean)) +
-  geom_ribbon(aes(PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
+  geom_ribbon(aes(PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#B38600") +
   geom_ribbon(aes(PercentAg, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
->>>>>>> 482f03054b85d85ba3a29ba9e824747dd4636cf9
   # geom_point(data = ag_data_binned, aes(x = mean_ag, y = mean_endo, size = sample, fill = year_bin), color = "black", shape = 21)+
   facet_wrap(~species)+  
-  scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
-  scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
-<<<<<<< HEAD
-  labs(y = "Endophyte Prevalence", x = "Percent Agriculture (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
-=======
+  # scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
+  # scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
   labs(y = "Endophyte Prevalence", x = "Percent Ag. (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
->>>>>>> 482f03054b85d85ba3a29ba9e824747dd4636cf9
   theme_classic()+
   theme(strip.background = element_blank(),
         legend.text = element_text(face = "italic"),
-        plot.margin = unit(c(0,.1,.1,.1), "lines"))+
+        plot.margin = unit(c(0,.1,.1,.1), "line"))+
   lims(y = c(0,1))
 
-<<<<<<< HEAD
-urb_trend <- ggplot(disturbance.pred2) +
-  geom_line(aes(x = PercentUrban, y = mean)) +
-  geom_ribbon(aes(x = PercentUrban, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
-  geom_ribbon(aes(x = PercentUrban, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
-=======
 urb_trend <- ggplot(urb.pred) +
   geom_line(aes(PercentUrban, mean)) +
-  geom_ribbon(aes(PercentUrban, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
+  geom_ribbon(aes(PercentUrban, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#021475") +
   geom_ribbon(aes(PercentUrban, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
->>>>>>> 482f03054b85d85ba3a29ba9e824747dd4636cf9
   # geom_point(data = ag_data_binned, aes(x = mean_ag, y = mean_endo, size = sample, fill = year_bin), color = "black", shape = 21)+
   facet_wrap(~species)+  
-  scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
-  scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
-<<<<<<< HEAD
-  labs(y = "Endophyte Prevalence", x = "Urban Cover (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
-=======
+  # scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
+  # scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
   labs(y = "Endophyte Prevalence", x = "Percent Urban (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
->>>>>>> 482f03054b85d85ba3a29ba9e824747dd4636cf9
   theme_classic()+
   theme(strip.background = element_blank(),
-        legend.text = element_text(face = "italic"),
-        plot.margin = unit(c(0,.1,.1,.1), "lines"))+
+        legend.text = element_text(face = "italic"), strip.text = element_blank(),
+        plot.margin = unit(c(0,.1,.1,.1), "line"))+
   lims(y = c(0,1))
 
-<<<<<<< HEAD
-nit_trend <- ggplot(disturbance.pred3) +
-  geom_line(aes(x = X_mean, y = mean)) +
-  geom_ribbon(aes (x = X_mean, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
-  geom_ribbon(aes(x = X_mean, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
-=======
 
 nit_trend <- ggplot(nit.pred) +
   geom_line(aes(X_mean, mean)) +
-  geom_ribbon(aes(X_mean, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
+  geom_ribbon(aes(X_mean, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#BF00A0") +
   geom_ribbon(aes(X_mean, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
->>>>>>> 482f03054b85d85ba3a29ba9e824747dd4636cf9
   # geom_point(data = ag_data_binned, aes(x = mean_ag, y = mean_endo, size = sample, fill = year_bin), color = "black", shape = 21)+
   facet_wrap(~species)+  
-  scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
-  scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
-<<<<<<< HEAD
-  labs(y = "Endophyte Prevalence", x = "Nitrogen Deposition (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
-=======
-  labs(y = "Endophyte Prevalence", x = "Nit", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
->>>>>>> 482f03054b85d85ba3a29ba9e824747dd4636cf9
+  # scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
+  # scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
+  labs(y = "Endophyte Prevalence", x = "Nitrogen Deposition ()", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
   theme_classic()+
-  theme(strip.background = element_blank(),
+  theme(strip.background = element_blank(), strip.text = element_blank(),
         legend.text = element_text(face = "italic"),
-        plot.margin = unit(c(0,.1,.1,.1), "lines"))+
+        plot.margin = unit(c(0,.1,.1,.1), "line"))+
   lims(y = c(0,1))
 
 
 ag_trend
 urb_trend
 nit_trend
-ggsave(ag_trend, filename = "ag_trend.png")
-ggsave(urb_trend, filename = "urb_trend.png")
-ggsave(nit_trend, filename = "nit_trend.png")
 
+fig1 <- ag_trend + urb_trend + nit_trend + plot_layout(ncol = 1) + plot_annotation(tag_levels = "A")
+ggsave(fig1, file = "Figure_1.png", width = 10, height = 10)
 
 ################################################################################################################################
 ##########  Plotting the posteriors from the model without year effect ###############
@@ -661,30 +700,30 @@ colnames(posteriors) <- c( paste0("iter",1:n_draws))
 
 
 posteriors_df <- as_tibble(t(posteriors), rownames = "iteration")
-  
+
 
 
 # Calculate the effects of the predictor, given that the reference level is for AGHY
 effects_df <- posteriors_df %>% 
-    mutate(NIT.AGHY = X_mean,
-           NIT.AGPE = X_mean+`Spp_codeAGPE:X_mean`,
-           NIT.ELVI = X_mean+`Spp_codeELVI:X_mean`,
-           AG.AGHY = PercentAg,
-           AG.AGPE = PercentAg+`Spp_codeAGPE:PercentAg`,
-           AG.ELVI = PercentAg+`Spp_codeELVI:PercentAg`,
-           URB.AGHY = PercentUrban,
-           URB.AGPE = PercentUrban+`Spp_codeAGPE:PercentUrban`,
-           URB.ELVI = PercentUrban+`Spp_codeELVI:PercentUrban`,
-           INT.AGHY = Spp_codeAGHY,
-           INT.AGPE = Spp_codeAGPE,
-           INT.ELVI = Spp_codeELVI) %>% 
+  mutate(NIT.AGHY = X_mean,
+         NIT.AGPE = X_mean+`Spp_codeAGPE:X_mean`,
+         NIT.ELVI = X_mean+`Spp_codeELVI:X_mean`,
+         AG.AGHY = PercentAg,
+         AG.AGPE = PercentAg+`Spp_codeAGPE:PercentAg`,
+         AG.ELVI = PercentAg+`Spp_codeELVI:PercentAg`,
+         URB.AGHY = PercentUrban,
+         URB.AGPE = PercentUrban+`Spp_codeAGPE:PercentUrban`,
+         URB.ELVI = PercentUrban+`Spp_codeELVI:PercentUrban`,
+         INT.AGHY = Spp_codeAGHY,
+         INT.AGPE = Spp_codeAGPE,
+         INT.ELVI = Spp_codeELVI) %>% 
   select(-all_of(param_names)) %>% 
   pivot_longer( cols = -c(iteration), names_to = "param") %>% 
   mutate(model = "No Year") %>% 
   mutate(spp_label = sub(".*\\.", "", param),
          param_label = sub("\\..*","", param))
-  
-  
+
+
 
 posterior_hist <- ggplot(effects_df)+
   stat_halfeye(aes(x = value, y = spp_label, fill  = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
