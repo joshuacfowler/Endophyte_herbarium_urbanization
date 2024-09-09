@@ -24,6 +24,8 @@ library(tidybayes) # using this for dotplots
 library(patchwork)
 library(ggmap)
 library(pROC)
+library(ggplot2)
+library(maps)
 
 invlogit<-function(x){exp(x)/(1+exp(x))}
 species_colors <- c("#1b9e77","#d95f02","#7570b3")
@@ -80,14 +82,13 @@ path <- Mallorypath
 #                               year>=1970 ~ "post-1970")) %>%
 #   mutate(endo_status_text = case_when(Endo_statu == 0 ~ "E-",
 #                                       Endo_statu == 1 ~ "E+"))
-# #loading in nitrogen data too
-# nit <- read.csv(file = paste0(path, "Nitdep_zonal_stat_10km_.csv"))
+# # #loading in nitrogen data too
+# nit <- read.csv(file = "endo_herb_nit.csv")
 # nitendoherb <- merge(nit, endo_herb)
 # endo_herb <- nitendoherb
-# 
-# write.csv(endo_herb, file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/EndoHerb_withNitrogen.csv")
+# write.csv(endo_herb, file = "EndoHerb_withNitrogen.csv")
 
-endo_herb <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/EndoHerb_withNitrogen.csv") %>%
+endo_herb <- read_csv(file = "EndoHerb_withNitrogen.csv") %>%
   mutate(sample_temp = Sample_id) %>%
   separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
   mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
@@ -97,14 +98,14 @@ endo_herb <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbar
                              spp_code == "AGPE" ~ "A. perennans",
                              spp_code == "ELVI" ~ "E. virginicus")) %>%
   mutate(std_year = (year-mean(year, na.rm = T)),
-         std_nit = (X_mean - mean(X_mean, na.rm = T))/sd(X_mean, na.rm = T),
+         std_nit = (NO3_mean - mean(NO3_mean, na.rm = T))/sd(NO3_mean, na.rm = T),
          std_urb = (PercentUrban - mean(PercentUrban, na.rm = T))/sd(PercentUrban, na.rm = T),
          std_ag = (PercentAg - mean(PercentAg, na.rm = T))/sd(PercentAg, na.rm = T)) %>%  # I am mean centering but not scaling by standard deviation to preserve units for interpretation of the parameter values
   filter(scorer_id != "Scorer26") %>% 
   filter(!is.na(Endo_status_liberal)) %>%
   filter(!is.na(spp_code)) %>%
   filter(!is.na(lon) & !is.na(year)) %>%
-  filter(!is.na(PercentAg), !is.na(X_mean))
+  filter(!is.na(PercentAg), !is.na(NO3_mean))
 
 # Looking at just AGHY for now, but we can likely fit one model for all species
 # endo_herb <- endo_herb %>% 
@@ -203,11 +204,11 @@ cor(endo_herb$PercentAg, endo_herb$PercentUrban)
 
 cor(endo_herb$PercentAg, endo_herb$PercentUrban, method = "spearman")
 ggplot(endo_herb)+
-  geom_point(aes(x = PercentAg, y = X_mean, color = Spp_code))
+  geom_point(aes(x = PercentAg, y = NO3_mean, color = Spp_code))
 
 
 ggplot(endo_herb)+
-  geom_point(aes(x = PercentUrban, y = X_mean))
+  geom_point(aes(x = PercentUrban, y = NO3_mean))
 
 
 mode <- function(codes){
@@ -432,18 +433,18 @@ pc_prec <- list(prior = "pcprec", param = c(1, 0.1))
 #   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
 #   space_int(coords, model = spde) 
 # 
-# s_components.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*X_mean*std_year, model = "fixed")+
-#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-#   space_int(coords, model = spde) 
-# 
-# s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*X_mean, model = "fixed")+
+s_components.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*NO3_mean*std_year, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+
+# s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*NO3_mean, model = "fixed")+
 #   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
 #   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
 #   space_int(coords, model = spde) 
 
 
-s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*X_mean, model = "fixed")+
+s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*NO3_mean, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde) 
@@ -455,12 +456,12 @@ s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*Perce
 #   space_int(coords, model = spde) 
 
 # s_components.5 <-  ~ 0 + species(main = ~ 0 + Spp_code, model = "fixed") +  
-#   species.ag(main = ~ 0 + Spp_code:PercentAg, model = "fixed") + species.urb(main = ~ 0 + Spp_code:PercentUrban, model = "fixed") + species.nit(main = ~ 0 +Spp_code:X_mean, model = "fixed")+
+#   species.ag(main = ~ 0 + Spp_code:PercentAg, model = "fixed") + species.urb(main = ~ 0 + Spp_code:PercentUrban, model = "fixed") + species.nit(main = ~ 0 +Spp_code:NO3_mean, model = "fixed")+
 #   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
 #   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
 #   space_int(coords, model = spde) 
 # 
-# s_components.5 <-  ~ 0 + fixed(main = ~ 0 + Spp_code*PercentAg*std_year + Spp_code*PercentUrban*std_year + Spp_code*X_mean*std_year, model = "fixed")+
+# s_components.5 <-  ~ 0 + fixed(main = ~ 0 + Spp_code*PercentAg*std_year + Spp_code*PercentUrban*std_year + Spp_code*NO3_mean*std_year, model = "fixed")+
 #   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
 #   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
 #   space_int(coords, model = spde) 
@@ -575,14 +576,14 @@ min_urb<- min(data$PercentUrban)
 mean_urb <- mean(data$PercentUrban)
 max_urb<- max(data$PercentUrban)
 
-min_nit<- min(data$X_mean)
-mean_nit <- mean(data$X_mean)
-max_nit<- max(data$X_mean)
+min_nit<- min(data$NO3_mean)
+mean_nit <- mean(data$NO3_mean)
+max_nit<- max(data$NO3_mean)
 
 preddata.1 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
                      PercentAg = rep(seq(min_ag, max_ag, length.out = 50), times = 3),
                      PercentUrban = mean_urb,
-                     X_mean = mean_nit,
+                     NO3_mean = mean_nit,
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
@@ -590,7 +591,7 @@ preddata.1 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50)
 preddata.2 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
                      PercentAg = mean_ag,
                      PercentUrban = rep(seq(min_urb, max_urb, length.out = 50), times = 3),
-                     X_mean = mean_nit,
+                     NO3_mean = mean_nit,
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
@@ -599,7 +600,7 @@ preddata.2 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50)
 preddata.3 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
                      PercentAg = mean_ag,
                      PercentUrban = mean_urb,
-                     X_mean = rep(seq(min_nit, max_nit, length.out = 50), times = 3),
+                     NO3_mean = rep(seq(min_nit, max_nit, length.out = 50), times = 3),
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
@@ -660,9 +661,9 @@ urb_trend <- ggplot(urb.pred) +
 
 
 nit_trend <- ggplot(nit.pred) +
-  geom_line(aes(X_mean, mean)) +
-  geom_ribbon(aes(X_mean, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#BF00A0") +
-  geom_ribbon(aes(X_mean, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
+  geom_line(aes(NO3_mean, mean)) +
+  geom_ribbon(aes(NO3_mean, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#BF00A0") +
+  geom_ribbon(aes(NO3_mean, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
   # geom_point(data = ag_data_binned, aes(x = mean_ag, y = mean_endo, size = sample, fill = year_bin), color = "black", shape = 21)+
   facet_wrap(~species)+  
   # scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
@@ -674,10 +675,6 @@ nit_trend <- ggplot(nit.pred) +
         plot.margin = unit(c(0,.1,.1,.1), "line"))+
   lims(y = c(0,1))
 
-
-ag_trend
-urb_trend
-nit_trend
 
 fig1 <- ag_trend + urb_trend + nit_trend + plot_layout(ncol = 1) + plot_annotation(tag_levels = "A")
 ggsave(fig1, file = "Figure_1.png", width = 10, height = 10)
@@ -705,9 +702,9 @@ posteriors_df <- as_tibble(t(posteriors), rownames = "iteration")
 
 # Calculate the effects of the predictor, given that the reference level is for AGHY
 effects_df <- posteriors_df %>% 
-  mutate(NIT.AGHY = X_mean,
-         NIT.AGPE = X_mean+`Spp_codeAGPE:X_mean`,
-         NIT.ELVI = X_mean+`Spp_codeELVI:X_mean`,
+  mutate(NIT.AGHY = NO3_mean,
+         NIT.AGPE = NO3_mean+`Spp_codeAGPE:NO3_mean`,
+         NIT.ELVI = NO3_mean+`Spp_codeELVI:NO3_mean`,
          AG.AGHY = PercentAg,
          AG.AGPE = PercentAg+`Spp_codeAGPE:PercentAg`,
          AG.ELVI = PercentAg+`Spp_codeELVI:PercentAg`,
@@ -741,7 +738,7 @@ posterior_hist <- ggplot(effects_df)+
   theme_bw()
 
 posterior_hist
-ggsave(posterior_hist, filename = "posterior_hist_without_year_intxn.png")
+ggsave(posterior_hist, filename = "posterior_hist_without_year_intxn.png", width = 10, height = 10)
 
 
 
@@ -790,20 +787,20 @@ mean_year <- mean(data$year)
 min_ag<- quantile(data$PercentAg, .05)
 max_ag <- quantile(data$PercentAg, .95)
 
-min_nit <- quantile(data$X_mean, .05)
-max_nit <- quantile(data$X_mean, .95)
+nit_low <- quantile(data$NO3_mean, .05)
+nit_high <- quantile(data$NO3_mean, .95)
 
-preddata <- expand.grid(Spp_code = c("AGHY","AGPE","ELVI"), std_year = seq( min_year, max_year, length.out = 20), PercentAg = c(min_ag, max_ag), X_mean = c(min_nit, max_nit),
-                        
+nit_low_AGPE <- quantile(data$NO3_mean[data$Spp_code == "AGPE"], .05)
+nit_high_AGPE <- quantile(data$NO3_mean[data$Spp_code == "AGPE"], .95)
+
+preddata <- expand.grid(Spp_code = c("AGHY","AGPE","ELVI"), std_year = seq(min_year, max_year, length.out = 20), PercentAg = c(min_ag, max_ag), NO3_mean = c(nit_low, nit_high),
                         collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
-                             Spp_code == "ELVI" ~ species_names[3])) %>% 
-  filter(PercentAg == min_ag & X_mean == max_nit | PercentAg == min_ag & X_mean == min_nit) %>%
-  mutate(disturbance_label = case_when(PercentAg == min_ag & X_mean == min_nit ~ "Undisturbed",
-                                       #PercentAg == max_ag & X_mean == max_nit ~ "Both",
-                                       #PercentAg == max_ag & X_mean == min_nit ~ "Agricultural",
-                                       PercentAg == min_ag & X_mean== max_nit ~ "Nitrogen"))
+                             Spp_code == "ELVI" ~ species_names[3]))%>% 
+  mutate(nit_label = case_when(NO3_mean > mean(NO3_mean) ~ "High Nitrogen",
+                               NO3_mean < mean(NO3_mean) ~ "Low Nitrogen"))
+# preddata$NO3_mean[preddata$Spp_code == "AGPE"] <-  ifelse(preddata$NO3_mean[preddata$Spp_code == "AGPE"] < nit_low_AGPE, "14.32645","21.78621")
 
 # gennerating predictions and back-transforming the standardized year variable
 
@@ -836,22 +833,22 @@ year.pred <- predict(
 
 
 
-histogram_data <- endo_herb%>%
-  mutate(disturbance_label = case_when(X_mean > mean(X_mean) ~ "Nitrogen",
-                                    X_mean < mean(X_mean) ~ "Undisturbed"))
+# histogram_data <- endo_herb%>%
+#   mutate(disturbance_label = case_when(NO3_mean > mean(NO3_mean) ~ "Nitrogen",
+#                                     NO3_mean < mean(NO3_mean) ~ "Undisturbed"))
+histogram_data2 <- endo_herb%>%
+  mutate(nit_label = case_when(NO3_mean > mean(NO3_mean) ~ "High Nitrogen",
+                                       NO3_mean < mean(NO3_mean) ~ "Low Nitrogen"))
 
-
-
-year_trend_facet <- ggplot(year.pred) +
-  geom_dots(data = histogram_data, aes(x = year, y = Endo_status_liberal, color = disturbance_label, side = ifelse(Endo_status_liberal == 1, "bottom", "top")),binwidth = 1.5)+
-  # geom_point(data = endo_herb_binned, aes(x = mean_year, y = mean_endo, size = sample, color = ag_bin))+
-  geom_ribbon(aes(year, ymin = q0.025, ymax = q0.975, group = disturbance_label, fill = disturbance_label), alpha = 0.3) +
-  geom_ribbon(aes(year, ymin = q0.25, ymax = q0.75, group = disturbance_label, fill = disturbance_label), alpha = 0.3) +
-  geom_line(aes(year, mean, group = disturbance_label, color = disturbance_label)) +
-  facet_wrap(~species+disturbance_label, nrow = 3)+
-  # scale_color_manual(values = c("#b35806", "black", "#542788"))+
-  # scale_fill_manual(values = c("#b35806", "black", "#542788"))+
+nit_yr_trend <- ggplot(year.pred)+
+  geom_dots(data = histogram_data2, aes(x = year, y = Endo_status_liberal, side = ifelse(Endo_status_liberal == 1, "bottom", "top")),binwidth = 1.5)+
+  geom_ribbon(aes(year, ymin = q0.025, ymax = q0.975, group = nit_label, fill = nit_label), alpha = 0.3) +
+  geom_ribbon(aes(year, ymin = q0.25, ymax = q0.75, group = nit_label, fill = nit_label), alpha = 0.3) +
+  geom_line(aes(year, mean, group = nit_label), color = "black") +
+  facet_wrap(~species+nit_label, nrow = 3)+
   guides(color = "none", fill = "none")+
+  scale_fill_manual(values = c("High Nitrogen" = "#BF00A0",
+                                "Low Nitrogen"="darkgray"))+
   labs(y = "Endophyte Prevalence", x = "Year", size = "Sample Size")+
   theme_classic()+
   theme(strip.background = element_blank(),
@@ -859,9 +856,30 @@ year_trend_facet <- ggplot(year.pred) +
         plot.margin = unit(c(0,.1,.1,.1), "line"))+
   lims(y = c(0,1))
 
-year_trend_facet
+ggsave(nit_yr_trend, filename = "Nitrogen_and_Year.png", width = 10, height = 10)
 
-ggsave(year_trend_facet, filename = "year_trend_facet_N.png")
+
+
+# year_trend_facet <- ggplot(year.pred) +
+#   geom_dots(data = histogram_data, aes(x = year, y = Endo_status_liberal, color = disturbance_label, side = ifelse(Endo_status_liberal == 1, "bottom", "top")),binwidth = 1.5)+
+#   # geom_point(data = endo_herb_binned, aes(x = mean_year, y = mean_endo, size = sample, color = ag_bin))+
+#   geom_ribbon(aes(year, ymin = q0.025, ymax = q0.975, group = disturbance_label, fill = disturbance_label), alpha = 0.3) +
+#   geom_ribbon(aes(year, ymin = q0.25, ymax = q0.75, group = disturbance_label, fill = disturbance_label), alpha = 0.3) +
+#   geom_line(aes(year, mean, group = disturbance_label, color = disturbance_label)) +
+#   facet_wrap(~species+disturbance_label, nrow = 3)+
+#   # scale_color_manual(values = c("#b35806", "black", "#542788"))+
+#   # scale_fill_manual(values = c("#b35806", "black", "#542788"))+
+#   guides(color = "none", fill = "none")+
+#   labs(y = "Endophyte Prevalence", x = "Year", size = "Sample Size")+
+#   theme_classic()+
+#   theme(strip.background = element_blank(),
+#         legend.text = element_text(face = "italic"),
+#         plot.margin = unit(c(0,.1,.1,.1), "line"))+
+#   lims(y = c(0,1))
+# 
+# year_trend_facet
+# 
+# ggsave(year_trend_facet, filename = "year_trend_facet_N.png", width = 10, height = 10)
 
 ################################################################################################################################
 ##########  Plotting the posteriors from NitXYear model ###############
@@ -1300,11 +1318,11 @@ ggsave(posterior_hist, filename = "posterior_hist_without_nitrogen.png")
 
 
 disturbanceXnitrogen <- ggplot(endo_herb_disturbance)+
-  geom_point(aes(x = PercentAg, y = X_mean, color = X_mean))+
+  geom_point(aes(x = PercentAg, y = NO3_mean, color = NO3_mean))+
   scale_color_viridis_c()+
-  geom_point(aes(x = quantile(PercentAg, .05), y = quantile(X_mean, .95)), color = "#542788", size = 4, shape = 4)+
-  geom_point(aes(y = quantile(X_mean, .05), x = quantile(PercentAg, .95)), color = "#b35806", size = 4, shape = 4)+
-  geom_point(aes(y = quantile(X_mean, .05), x = quantile(PercentAg, .05)), color = "black", size = 4, shape = 4)+
+  geom_point(aes(x = quantile(PercentAg, .05), y = quantile(NO3_mean, .95)), color = "#542788", size = 4, shape = 4)+
+  geom_point(aes(y = quantile(NO3_mean, .05), x = quantile(PercentAg, .95)), color = "#b35806", size = 4, shape = 4)+
+  geom_point(aes(y = quantile(NO3_mean, .05), x = quantile(PercentAg, .05)), color = "black", size = 4, shape = 4)+
   # labs(x = "Percent Ag. (%)", y = "Percent Urban (%)", color = "Nitrogen \n Deposition")+
   theme_bw()
 
@@ -1312,18 +1330,18 @@ disturbanceXnitrogen <- ggplot(endo_herb_disturbance)+
 disturbanceXnitrogen
 ggsave(disturbanceXnitrogen, filename = "disturbanceXnitrogen_dimensions.png")
 cor(endo_herb$PercentAg, endo_herb$PercentUrban)
-cor(endo_herb$PercentAg, endo_herb$X_mean)
-cor(endo_herb$PercentUrban, endo_herb$X_mean)
+cor(endo_herb$PercentAg, endo_herb$NO3_mean)
+cor(endo_herb$PercentUrban, endo_herb$NO3_mean)
 
 
 # version with all species in one model. Note that we remove the intercept, and then we have to specify that the species is in the fixed effects model
 
-s_components <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg*std_year + Spp_code*PercentUrban*std_year +  Spp_code*X_mean*std_year, model = "fixed")+
+s_components <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg*std_year + Spp_code*PercentUrban*std_year +  Spp_code*NO3_mean*std_year, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde) 
 
-s_components <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*PercentUrban +  Spp_code*X_mean, model = "fixed")+
+s_components <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*PercentUrban +  Spp_code*NO3_mean, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde) 
@@ -1367,9 +1385,9 @@ fit.N <- read_rds(file = "fit_with_N.rds")
 ##########  Getting and plotting prediction across nitrogen depostion from the model  ###############
 ################################################################################################################################
 
-min_nit<- min(data$X_mean)
-max_nit <- max(data$X_mean)
-mean_nit <- mean(data$X_mean)
+min_nit<- min(data$NO3_mean)
+max_nit <- max(data$NO3_mean)
+mean_nit <- mean(data$NO3_mean)
 
 
 
@@ -1388,7 +1406,7 @@ max_urb <- quantile(data$PercentUrban, .95)
 
 
 preddata <- expand.grid(Spp_code = c("AGHY","AGPE","ELVI"), #std_year = c(1900, 1980)-mean_year, 
-                        PercentAg = seq(min_ag, max_ag,  length.out = 20), PercentUrban = seq(min_urb, max_urb,  length.out = 20), X_mean = seq(min_nit, max_nit, length.out = 20),
+                        PercentAg = seq(min_ag, max_ag,  length.out = 20), PercentUrban = seq(min_urb, max_urb,  length.out = 20), NO3_mean = seq(min_nit, max_nit, length.out = 20),
                         
                         collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
@@ -1416,12 +1434,12 @@ nit.pred <- predict(
 # binning the data for plotting
 endo_herb_binned_nitrogen <- endo_herb_disturbance %>%
   filter(disturbance_ratio>-Inf) %>% 
-  mutate(binned_nit = cut(X_mean, breaks = 8),
+  mutate(binned_nit = cut(NO3_mean, breaks = 8),
          binned_disturb = cut(disturbance_ratio, breaks = 3),
          #binned_year = cut(year, breaks = 2)
          ) %>% 
   group_by(Spp_code, species,binned_nit, binned_disturb) %>% #, binned_year) %>%
-  summarise(mean_nit = mean(X_mean),
+  summarise(mean_nit = mean(NO3_mean),
             mean_disturb = mean(disturbance_ratio),
             #mean_year = mean(year),
             mean_endo = mean(Endo_status_liberal),
@@ -1439,9 +1457,9 @@ endo_herb_binned_nitrogen <- endo_herb_disturbance %>%
 
 nit_trend <- ggplot(nit.pred) +
   geom_point(data = endo_herb_binned_nitrogen, aes(x = mean_nit, y = mean_endo, size = sample))+
-  geom_line(aes(X_mean, mean, )) +
-  geom_ribbon(aes(X_mean, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
-  geom_ribbon(aes(X_mean, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
+  geom_line(aes(NO3_mean, mean, )) +
+  geom_ribbon(aes(NO3_mean, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
+  geom_ribbon(aes(NO3_mean, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
   facet_wrap(~species + disturbance_label)+
   scale_color_manual(values = c("blue", "red"))+
   scale_fill_manual(values = c("blue", "red"))+
@@ -1455,9 +1473,9 @@ nit_trend <- ggplot(nit.pred) +
 
 # nit_trend <- ggplot(nit.pred) +
 #   geom_point(data = endo_herb_binned_nitrogen, aes(x = mean_nit, y = mean_endo, size = sample, color = year_bin))+
-#   geom_line(aes(X_mean, mean, group = as.factor(year), color = as.factor(year))) +
-#   geom_ribbon(aes(X_mean, ymin = q0.025, ymax = q0.975, group = as.factor(year), fill = as.factor(year)), alpha = 0.2) +
-#   geom_ribbon(aes(X_mean, ymin = q0.25, ymax = q0.75,group = as.factor(year), fill = as.factor(year)), alpha = 0.2) +
+#   geom_line(aes(NO3_mean, mean, group = as.factor(year), color = as.factor(year))) +
+#   geom_ribbon(aes(NO3_mean, ymin = q0.025, ymax = q0.975, group = as.factor(year), fill = as.factor(year)), alpha = 0.2) +
+#   geom_ribbon(aes(NO3_mean, ymin = q0.25, ymax = q0.75,group = as.factor(year), fill = as.factor(year)), alpha = 0.2) +
 #   facet_wrap(~species + disturbance_label)+
 #   scale_color_manual(values = c("blue", "red"))+
 #   scale_fill_manual(values = c("blue", "red"))+
@@ -1575,7 +1593,7 @@ multiplot(plotlist = flist, cols = 3)
 # This is probably the graph to show the probability that temporal trends differ between more and less agricultural areas
 
 
-agXyear_posterior <- ggplot(filter(posteriors_df, grepl("PercentAg:std_year:X_mean", posteriors_df$param)))+
+agXyear_posterior <- ggplot(filter(posteriors_df, grepl("PercentAg:std_year:NO3_mean", posteriors_df$param)))+
   geom_histogram(aes(x = value))+
   geom_vline(xintercept = 0)+
   facet_wrap(~param, scales = "free")
@@ -1583,7 +1601,7 @@ agXyear_posterior
 
 ggsave(agXyear_posterior, filename = "agXyear_posterior.png")
 
-X_mean_posterior <- ggplot(filter(posteriors_df, grepl("X_mean", posteriors_df$param)))+
+NO3_mean_posterior <- ggplot(filter(posteriors_df, grepl("NO3_mean", posteriors_df$param)))+
   geom_histogram(aes(x = value))+
   geom_vline(xintercept = 0)+
   facet_wrap(~param, scales = "free")
@@ -1737,7 +1755,7 @@ grd_dims <- round(c(x = diff(range(xlim)), y = diff(range(ylim))))
 ########################################### Model with Ag*yr, Urb*yr, and Nit*yr############################
 #######################################################################################################
 a_components <- ~ Intercept(1) +
-  X_mean + yearEffect(year, model = "linear") + yearXnitEffect(year*X_mean, model = "linear") +
+  NO3_mean + yearEffect(year, model = "linear") + yearXnitEffect(year*NO3_mean, model = "linear") +
   space_int(coords, model = spde) 
 
 a_formula <- Endo_statu ~ .
@@ -1796,29 +1814,29 @@ ggplot(urb.pred) +
   lims(y = c(0,1))
 
 
-endo_herb <- endo_herb %>% mutate_at(c('PercentUrban', 'PercentAg', 'X_mean', "year"), ~(scale(.) %>% as.vector))
+endo_herb <- endo_herb %>% mutate_at(c('PercentUrban', 'PercentAg', 'NO3_mean', "year"), ~(scale(.) %>% as.vector))
 
 min_ag <- min(endo_herb$PercentAg, na.rm = TRUE)
 max_ag <- max(endo_herb$PercentAg, na.rm = TRUE)
-min_nit <- min(endo_herb$X_mean, na.rm = TRUE)
-max_nit <- max(endo_herb$X_mean, na.rm = TRUE)
+min_nit <- min(endo_herb$NO3_mean, na.rm = TRUE)
+max_nit <- max(endo_herb$NO3_mean, na.rm = TRUE)
 
-all_preddata <- expand.grid(PercentUrban = seq(min_urb, max_urb), PercentAg = mean(endo_herb$PercentAg, na.rm = TRUE), X_mean = c(min_nit, max_nit), year = NA)
+all_preddata <- expand.grid(PercentUrban = seq(min_urb, max_urb), PercentAg = mean(endo_herb$PercentAg, na.rm = TRUE), NO3_mean = c(min_nit, max_nit), year = NA)
 
-#all_preddata <- data.frame(PercentUrban = seq(min_urb, max_urb), PercentAg = seq(min_ag, max_ag, length.out = 100), X_mean = seq(min_nit, max_nit, length.out =100), = seq(min_year, max_year, length.out = 100))
+#all_preddata <- data.frame(PercentUrban = seq(min_urb, max_urb), PercentAg = seq(min_ag, max_ag, length.out = 100), NO3_mean = seq(min_nit, max_nit, length.out =100), = seq(min_year, max_year, length.out = 100))
 
 all.pred <- predict(
   fit,
   newdata = all_preddata,
-  formula = ~ invlogit(Intercept +PercentUrban + X_mean + year))
+  formula = ~ invlogit(Intercept +PercentUrban + NO3_mean + year))
 
 
 ggplot(all.pred) +
   # geom_point(data = endo_herb_binned, aes(x = mean_year, y = mean_endo, size = sample))+
   # geom_point(data =endo_herb, aes(x = year, y = Endo_status_liberal), shape = "|")+
-  geom_line(aes(PercentUrban, mean, color = X_mean, group = X_mean)) +
+  geom_line(aes(PercentUrban, mean, color = NO3_mean, group = NO3_mean)) +
  # geom_ribbon(aes(PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
-  geom_ribbon(aes(PercentUrban, ymin = mean - 1 * sd, ymax = mean + 1 * sd, group = X_mean, fill = X_mean), alpha = 0.2) 
+  geom_ribbon(aes(PercentUrban, ymin = mean - 1 * sd, ymax = mean + 1 * sd, group = NO3_mean, fill = NO3_mean), alpha = 0.2) 
   lims(y = c(0,1))
 
   
@@ -1827,13 +1845,13 @@ ggplot(all.pred) +
 ################################################## straightening this up ##############################################
 #######################################################################################################################
 #creating full model
-#and then model with x_mean and ag together
+#and then model with NO3_mean and ag together
 
 
 #4.22.24, fixed effect thing josh sent me  
-  #removed: + PercentAg*X_mean,
+  #removed: + PercentAg*NO3_mean,
 s_components <- ~ my_fixed_effects(
-  main = PercentAg*year*X_mean,
+  main = PercentAg*year*NO3_mean,
   model = "fixed")+
   space_int(coords, model = spde) 
 
@@ -1867,18 +1885,18 @@ max_urb <- max(endo_herb$PercentUrban, na.rm = TRUE)
 min_ag <- min(endo_herb$PercentAg, na.rm = TRUE)
 max_ag <- max(endo_herb$PercentAg, na.rm = TRUE)
 
-min_nit <- min(endo_herb$X_mean, na.rm = TRUE)
-max_nit <- max(endo_herb$X_mean, na.rm = TRUE)
+min_nit <- min(endo_herb$NO3_mean, na.rm = TRUE)
+max_nit <- max(endo_herb$NO3_mean, na.rm = TRUE)
 
-#prediction dataframe. removed: X_mean = seq(min_nit, max_nit)
-allpreddata <- expand.grid(PercentAg = seq(min_ag, max_ag), X_mean= c(min_nit, max_nit), year = c(1900,2000))
+#prediction dataframe. removed: NO3_mean = seq(min_nit, max_nit)
+allpreddata <- expand.grid(PercentAg = seq(min_ag, max_ag), NO3_mean= c(min_nit, max_nit), year = c(1900,2000))
 #which goes into this:
 allpreddata <- predict(
   fit,
   newdata = allpreddata,
   formula = ~ invlogit(Intercept + my_fixed_effects)) 
 allpreddata <- allpreddata %>%
-  mutate(X_mean = as.factor(X_mean), year = as.factor(year))
+  mutate(NO3_mean = as.factor(NO3_mean), year = as.factor(year))
   
 
 #now plot:
@@ -1888,7 +1906,7 @@ ggplot(allpreddata) +
   geom_line(aes(PercentAg, mean, color = as.factor(year))) +
   # geom_ribbon(aes(PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
   geom_ribbon(aes(PercentAg, ymin = q0.025, ymax = q0.975, fill = as.factor(year), group = year), alpha = 0.2)+
-  facet_wrap(~ X_mean)
+  facet_wrap(~ NO3_mean)
 #lims(y = c(0,1))
   
 ################################## Ag*yr model ###########################
@@ -1937,15 +1955,15 @@ agpreddata <- predict(
 ggplot(agpreddata) +
   # geom_point(data = endo_herb_binned, aes(x = mean_year, y = mean_endo, size = sample))+
   geom_point(data =endo_herb, aes(x = year, y = Endo_status_liberal), shape = "|")+
-  geom_line(aes(X_mean, mean, color = year, group = year)) +
+  geom_line(aes(NO3_mean, mean, color = year, group = year)) +
   # geom_ribbon(aes(PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
-  geom_ribbon(aes(X_mean, ymin = mean - 1 * sd, ymax = mean + 1 * sd, group = X_mean, fill = X_mean), alpha = 0.2)+
+  geom_ribbon(aes(NO3_mean, ymin = mean - 1 * sd, ymax = mean + 1 * sd, group = NO3_mean, fill = NO3_mean), alpha = 0.2)+
   lims(y = c(0,1), x = c(1900,2000))
 
 ################################## Ag*yr + ag*nit  model ###########################
 
 c_components <- ~ Intercept(1) +
-  PercentAg:year + PercentAg*X_mean +
+  PercentAg:year + PercentAg*NO3_mean +
   space_int(coords, model = spde) 
 
 
@@ -1972,7 +1990,7 @@ c_fit <- bru(c_components,
 
 
 #prediction dataframe
-agnitpreddata <- expand.grid(Agseq = seq(min_ag, max_ag), year = c(1900,2000),X_mean = seq(min_nit, max_nit))
+agnitpreddata <- expand.grid(Agseq = seq(min_ag, max_ag), year = c(1900,2000),NO3_mean = seq(min_nit, max_nit))
 #which goes into this:
 agnitpreddata <- predict(
   fit,
@@ -1984,14 +2002,14 @@ agnitpreddata <- predict(
 ggplot(agnitpreddata) +
   # geom_point(data = endo_herb_binned, aes(x = mean_year, y = mean_endo, size = sample))+
   geom_point(data =endo_herb, aes(x = year, y = Endo_status_liberal), shape = "|")+
-  geom_line(aes(X_mean, mean, color = year, group = year)) +
+  geom_line(aes(NO3_mean, mean, color = year, group = year)) +
   # geom_ribbon(aes(PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
-  geom_ribbon(aes(X_mean, ymin = mean - 1 * sd, ymax = mean + 1 * sd, group = X_mean, fill = X_mean), alpha = 0.2)+
+  geom_ribbon(aes(NO3_mean, ymin = mean - 1 * sd, ymax = mean + 1 * sd, group = NO3_mean, fill = NO3_mean), alpha = 0.2)+
   lims(y = c(0,1), x = c(1900,2000))
 
 ################################## nit*yr model ###########################
 d_components <- ~ Intercept(1) +
-  X_mean:year +
+  NO3_mean:year +
   space_int(coords, model = spde) 
 
 
@@ -2018,20 +2036,20 @@ d_fit <- bru(d_components,
 
 
 #prediction dataframe
-nitpreddata <- expand.grid(year = c(1900,2000), X_mean = seq(min_nit, max_nit))
+nitpreddata <- expand.grid(year = c(1900,2000), NO3_mean = seq(min_nit, max_nit))
 #which goes into this:
 nitpreddata <- predict(
   fit,
   newdata = agpreddata,
-  formula = ~ invlogit(Intercept + year + X_mean)) 
+  formula = ~ invlogit(Intercept + year + NO3_mean)) 
 
 #now plot:
 #will troubleshoot later
 ggplot(nitpreddata) +
   # geom_point(data = endo_herb_binned, aes(x = mean_year, y = mean_endo, size = sample))+
   geom_point(data =endo_herb, aes(x = year, y = Endo_status_liberal), shape = "|")+
-  geom_line(aes(X_mean, mean, color = year, group = year)) +
+  geom_line(aes(NO3_mean, mean, color = year, group = year)) +
   # geom_ribbon(aes(PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2) +
-  geom_ribbon(aes(X_mean, ymin = mean - 1 * sd, ymax = mean + 1 * sd, group = X_mean, fill = X_mean), alpha = 0.2)+
+  geom_ribbon(aes(NO3_mean, ymin = mean - 1 * sd, ymax = mean + 1 * sd, group = NO3_mean, fill = NO3_mean), alpha = 0.2)+
   lims(y = c(0,1), x = c(1900,2000))
 
