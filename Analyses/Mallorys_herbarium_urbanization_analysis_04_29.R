@@ -43,7 +43,7 @@ species_names <- c("A. hyemalis", "A. perennans", "E. virginicus")
 
 Mallorypath <- "C:/Users/malpa/OneDrive/Documents/EndoHerbQGIS/"
 Joshpath <- "~/Dropbox/Josh&Tom - shared/Endo_Herbarium/"
-path <- Mallorypath
+path <- Joshpath
 
 
 # endo_herb_georef <- read_csv(file = paste0(path, "Zonalhist_NLCD_10km_.csv")) %>%
@@ -88,7 +88,7 @@ path <- Mallorypath
 # endo_herb <- nitendoherb
 # write.csv(endo_herb, file = "EndoHerb_withNitrogen.csv")
 
-endo_herb <- read_csv(file = "EndoHerb_withNitrogen.csv") %>%
+endo_herb <- read_csv(file = "Analyses/EndoHerb_withNitrogen.csv") %>%
   mutate(sample_temp = Sample_id) %>%
   separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
   mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
@@ -120,10 +120,10 @@ scorer_no <- paste0("Scorer",1:nlevels(as.factor(endo_herb$scorer_id)))
 endo_herb$scorer_factor <- scorer_no[match(as.factor(endo_herb$scorer_id), scorer_levels)]
 
 
-collector_levels <- levels(as.factor(endo_herb$collector_))
-collector_no <- paste0("Collector",1:nlevels(as.factor(endo_herb$collector_)))
+collector_levels <- levels(as.factor(endo_herb$collector_string))
+collector_no <- paste0("Collector",1:nlevels(as.factor(endo_herb$collector_string)))
 
-endo_herb$collector_factor <- collector_no[match(as.factor(endo_herb$collector_), collector_levels)]
+endo_herb$collector_factor <- collector_no[match(as.factor(endo_herb$collector_string), collector_levels)]
 
 # converting the lat long to epsg 6703km in km
 # define a crs
@@ -222,7 +222,7 @@ summary_endo_herb <- endo_herb %>%
   filter(month<=12&month>0) %>% 
   group_by(species) %>% 
   dplyr::summarize(n(),
-            avg_seed = mean(seed_score, na.rm = T),
+            avg_seed = mean(seed_scored, na.rm = T),
             avg_month = mode(as.numeric(month)))
 
 #########################################################################################
@@ -316,8 +316,11 @@ endo_nit_map <- ggplot(data = counties_data_nit) +
 
 #Compile maps into one panel
 mapfig <-  endo_ag_map +endo_urb_map + endo_nit_map + plot_layout(ncol = 3) + plot_annotation(tag_levels = "A")
+# mapfig <-  endo_ag_map /endo_urb_map / endo_nit_map + plot_layout(ncol = 1) + plot_annotation(tag_levels = "A")
+
 #Save map file
-ggsave(mapfig, file = "Map_Figure.png", width = 15, height = 3)
+ggsave(mapfig, file = "Map_Figure.png", width = 5, height = 10)
+ggsave(mapfig, file = "Map_Figure.png", width = 18, height = 5)
 
 
 ##########################################################################################
@@ -471,33 +474,33 @@ s_formula <- Endo_status_liberal ~ .
 
 # Now run the model
 
-fit.1 <- bru(s_components.1,
-           like(
-             formula = s_formula,
-             family = "binomial",
-             Ntrials = 1,
-             data = data
-           ),
-           options = list(
-             control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-             control.inla = list(int.strategy = "eb"),
-             verbose = TRUE
-           )
-)
-
-fit.2 <- bru(s_components.2,
-             like(
-               formula = s_formula,
-               family = "binomial",
-               Ntrials = 1,
-               data = data
-             ),
-             options = list(
-               control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-               control.inla = list(int.strategy = "eb"),
-               verbose = TRUE
-             )
-)
+# fit.1 <- bru(s_components.1,
+#            like(
+#              formula = s_formula,
+#              family = "binomial",
+#              Ntrials = 1,
+#              data = data
+#            ),
+#            options = list(
+#              control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
+#              control.inla = list(int.strategy = "eb"),
+#              verbose = TRUE
+#            )
+# )
+# 
+# fit.2 <- bru(s_components.2,
+#              like(
+#                formula = s_formula,
+#                family = "binomial",
+#                Ntrials = 1,
+#                data = data
+#              ),
+#              options = list(
+#                control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
+#                control.inla = list(int.strategy = "eb"),
+#                verbose = TRUE
+#              )
+# )
 
 
 fit.3 <- bru(s_components.3,
@@ -529,19 +532,19 @@ fit.4 <- bru(s_components.4,
              )
 )
 
-fit.5 <- bru(s_components.5,
-             like(
-               formula = s_formula,
-               family = "binomial",
-               Ntrials = 1,
-               data = data
-             ),
-             options = list(
-               control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-               control.inla = list(int.strategy = "eb"),
-               verbose = TRUE
-             )
-)
+# fit.5 <- bru(s_components.5,
+#              like(
+#                formula = s_formula,
+#                family = "binomial",
+#                Ntrials = 1,
+#                data = data
+#              ),
+#              options = list(
+#                control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
+#                control.inla = list(int.strategy = "eb"),
+#                verbose = TRUE
+#              )
+# )
 
 fit.1$dic$dic
 fit.2$dic$dic
@@ -609,21 +612,21 @@ preddata.3 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50)
 ag.pred <- predict(
   fit.4,
   newdata = preddata.1,
-  formula = ~ invlogit(fixed), #+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  formula = ~ invlogit(fixed),# + collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
   n.samples = 100) 
 
 urb.pred <- predict(
   fit.4,
   newdata = preddata.2,
-  formula = ~ invlogit(fixed), #+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  formula = ~ invlogit(fixed),# + collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
   n.samples = 100) 
 
 nit.pred <- predict(
   fit.4,
   newdata = preddata.3,
-  formula = ~ invlogit(fixed), #+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  formula = ~ invlogit(fixed),# + collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
   n.samples = 100) 
 
@@ -634,28 +637,30 @@ ag_trend <- ggplot(ag.pred) +
   geom_ribbon(aes(PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#B38600") +
   geom_ribbon(aes(PercentAg, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
   # geom_point(data = ag_data_binned, aes(x = mean_ag, y = mean_endo, size = sample, fill = year_bin), color = "black", shape = 21)+
-  facet_wrap(~species)+  
+  facet_wrap(~species,  ncol = 1, scales = "free_x", strip.position="right")+  
   # scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
   # scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
   labs(y = "Endophyte Prevalence", x = "Percent Ag. (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
   theme_classic()+
   theme(strip.background = element_blank(),
+        strip.text = element_blank(),
         legend.text = element_text(face = "italic"),
         plot.margin = unit(c(0,.1,.1,.1), "line"))+
-  lims(y = c(0,1))
+  lims(y = c(0,1), x = c(0, 100))
 
 urb_trend <- ggplot(urb.pred) +
   geom_line(aes(PercentUrban, mean)) +
   geom_ribbon(aes(PercentUrban, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#021475") +
   geom_ribbon(aes(PercentUrban, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
   # geom_point(data = ag_data_binned, aes(x = mean_ag, y = mean_endo, size = sample, fill = year_bin), color = "black", shape = 21)+
-  facet_wrap(~species)+  
+  facet_wrap(~species, ncol = 1, scales = "free_x", strip.position="right")+  
   # scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
   # scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
   labs(y = "Endophyte Prevalence", x = "Percent Urban (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
   theme_classic()+
   theme(strip.background = element_blank(),
-        legend.text = element_text(face = "italic"), strip.text = element_blank(),
+        strip.text = element_blank(),
+        legend.text = element_text(face = "italic"),
         plot.margin = unit(c(0,.1,.1,.1), "line"))+
   lims(y = c(0,1))
 
@@ -665,19 +670,19 @@ nit_trend <- ggplot(nit.pred) +
   geom_ribbon(aes(NO3_mean, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#BF00A0") +
   geom_ribbon(aes(NO3_mean, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
   # geom_point(data = ag_data_binned, aes(x = mean_ag, y = mean_endo, size = sample, fill = year_bin), color = "black", shape = 21)+
-  facet_wrap(~species)+  
+  facet_wrap(~species, ncol = 1, scales = "free_x", strip.position="right")+  
   # scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
   # scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
-  labs(y = "Endophyte Prevalence", x = "Nitrogen Deposition ()", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
+  labs(y = "Endophyte Prevalence", x = "Nitrogen Deposition (kg N/km^2)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
   theme_classic()+
-  theme(strip.background = element_blank(), strip.text = element_blank(),
+  theme(strip.background = element_blank(), strip.text = element_text(face = "italic", size = rel(1.1)), strip.text.y.right = element_text(angle = 0),
         legend.text = element_text(face = "italic"),
         plot.margin = unit(c(0,.1,.1,.1), "line"))+
   lims(y = c(0,1))
 
 
-fig1 <- ag_trend + urb_trend + nit_trend + plot_layout(ncol = 1) + plot_annotation(tag_levels = "A")
-ggsave(fig1, file = "Figure_1.png", width = 10, height = 10)
+fig1 <- ag_trend + urb_trend + nit_trend + plot_layout(ncol = 3) #+ plot_annotation(tag_levels = "A")
+ggsave(fig1, file = "Figure_1.png", width = 8.5, height = 8)
 
 ################################################################################################################################
 ##########  Plotting the posteriors from the model without year effect ###############
@@ -814,6 +819,10 @@ year.pred <- predict(
   n.samples = 100) %>% 
   mutate(year = std_year + mean_year)
 
+year.pred <- year.pred %>% 
+  filter(species == "A. hyemalis" & year <= max(filter(endo_herb, species == "A. hyemalis")$year) & year >= min(filter(endo_herb, species == "A. hyemalis")$year)|
+           species == "A. perennans" & year <= max(filter(endo_herb, species == "A. perennans")$year) & year >= min(filter(endo_herb, species == "A. perennans")$year)|
+           species == "E. virginicus" & year <= max(filter(endo_herb, species == "E. virginicus")$year) & year >= min(filter(endo_herb, species == "E. virginicus")$year))
 
 # binning the data for plotting
 # endo_herb_binned <- endo_herb %>% 
@@ -841,22 +850,23 @@ histogram_data2 <- endo_herb%>%
                                        NO3_mean < mean(NO3_mean) ~ "Low Nitrogen"))
 
 nit_yr_trend <- ggplot(year.pred)+
-  geom_dots(data = histogram_data2, aes(x = year, y = Endo_status_liberal, side = ifelse(Endo_status_liberal == 1, "bottom", "top")),binwidth = 1.5)+
+  # geom_dots(data = histogram_data2, aes(x = year, y = Endo_status_liberal, side = ifelse(Endo_status_liberal == 1, "bottom", "top"), fill = nit_label),binwidth = .3)+
   geom_ribbon(aes(year, ymin = q0.025, ymax = q0.975, group = nit_label, fill = nit_label), alpha = 0.3) +
   geom_ribbon(aes(year, ymin = q0.25, ymax = q0.75, group = nit_label, fill = nit_label), alpha = 0.3) +
   geom_line(aes(year, mean, group = nit_label), color = "black") +
-  facet_wrap(~species+nit_label, nrow = 3)+
-  guides(color = "none", fill = "none")+
+  facet_wrap(~species, nrow = 3, scales = "free")+
+  guides(color = "none")+
   scale_fill_manual(values = c("High Nitrogen" = "#BF00A0",
                                 "Low Nitrogen"="darkgray"))+
-  labs(y = "Endophyte Prevalence", x = "Year", size = "Sample Size")+
+  labs(y = "Endophyte Prevalence", x = "Year", size = "Sample Size", fill = "Nitrogen Deposition")+
   theme_classic()+
   theme(strip.background = element_blank(),
         legend.text = element_text(face = "italic"),
+        strip.text = element_text(face = "italic", size = rel(1.1)), strip.text.y.right = element_text(angle = 0),
         plot.margin = unit(c(0,.1,.1,.1), "line"))+
-  lims(y = c(0,1))
+  lims(y = c(0,1), x = c(1832, 2019))
 
-ggsave(nit_yr_trend, filename = "Nitrogen_and_Year.png", width = 10, height = 10)
+ggsave(nit_yr_trend, filename = "Nitrogen_and_Year.png", width = 6, height = 8)
 
 
 
@@ -897,48 +907,37 @@ posteriors <- generate(
 rownames(posteriors) <- param_names
 colnames(posteriors) <- c( paste0("iter",1:n_draws))
 
+posteriors_df <- as_tibble(t(posteriors), rownames = "iteration")
 
-posteriors_df <- as_tibble(posteriors, rownames = "param") %>% 
-  mutate(param_label = case_when(param == param_names[1] ~ "Int AGHY",
-                                 param == param_names[2] ~ "Int AGPE",
-                                 param == param_names[3] ~ "Int ELVI",
-                                 # param == param_names[4] ~ "Ag AGHY",
-                                 # param == param_names[5] ~ "Urban AGHY",
-                                 param == param_names[4] ~ "Nit AGHY",
-                                 param == param_names[5] ~ "Year AGHY",
-                                 
-                                 # param == param_names[7] ~ "Ag AGPE",
-                                 # param == param_names[8] ~ "Ag ELVI",
-                                 # param == param_names[9] ~ "Urban AGPE",
-                                 # param == param_names[10] ~ "Urban ELVI",
-                                 param == param_names[6] ~ "Nit AGPE",
-                                 param == param_names[7] ~ "Nit ELVI",
-                                 param == param_names[8] ~ "Year AGPE",
-                                 param == param_names[9] ~ "Year ELVI",
-                                 param == param_names[10] ~ "Year:Nit AGHY",
-                                 param == param_names[11] ~ "Year:Nit AGPE",
-                                 param == param_names[12] ~ "Year:Nit ELVI",
-                                 
-  ),
-         spp_label = sub(".* ", "", param_label),
-         param_type = sub(" .*", "", param_label)) %>% 
-  pivot_longer( cols = -c(param, param_label, spp_label, param_type), names_to = "iteration") %>% 
-  mutate(model = "Year:Nit")
+# Calculate the effects of the predictor, given that the reference level is for AGHY
+effects_df <- posteriors_df %>% 
+  mutate(NIT.AGHY = NO3_mean,
+         NIT.AGPE = NO3_mean+`Spp_codeAGPE:NO3_mean`,
+         NIT.ELVI = NO3_mean+`Spp_codeELVI:NO3_mean`,
+         YEAR.AGHY = std_year,
+         YEAR.AGPE = std_year+`Spp_codeAGPE:std_year`,
+         YEAR.ELVI = std_year+`Spp_codeELVI:std_year`,
+         YEARxNIT.AGHY = `NO3_mean:std_year`,
+         YEARxNIT.AGPE = `NO3_mean:std_year`+`Spp_codeAGPE:NO3_mean:std_year`,
+         YEARxNIT.ELVI = `NO3_mean:std_year`+`Spp_codeELVI:NO3_mean:std_year`,
+         INT.AGHY = Spp_codeAGHY,
+         INT.AGPE = Spp_codeAGPE,
+         INT.ELVI = Spp_codeELVI) %>% 
+  select(-all_of(param_names)) %>% 
+  pivot_longer( cols = -c(iteration), names_to = "param") %>% 
+  mutate(model = "NitXYear") %>% 
+  mutate(spp_label = sub(".*\\.", "", param),
+         param_label = sub("\\..*","", param))
 
-posteriors_summary <- posteriors_df %>% 
-  group_by(param, param_label, spp_label, param_type) %>% 
-  summarize(mean = mean(value), 
-            lwr = quantile(value, .025),
-            upr = quantile(value, .975))
 
-posterior_hist <- ggplot(posteriors_df)+
+posterior_hist <- ggplot(effects_df)+
   stat_halfeye(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
   # stat_histinterval(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, alpha = .6)+
   # geom_point(data = posteriors_summary, aes(x = mean, y = spp_label, color = spp_label))+
   # geom_linerange(data = posteriors_summary, aes(xmin = lwr, xmax = upr, y = spp_label, color = spp_label))+
   
   geom_vline(xintercept = 0)+
-  facet_wrap(~param_type, scales = "free")+
+  facet_wrap(~param_label, scales = "free")+
   scale_color_manual(values = species_colors)+
   scale_fill_manual(values = species_colors)+
   scale_x_continuous(labels = scales::label_number(), guide = guide_axis(check.overlap = TRUE))+
@@ -948,6 +947,13 @@ posterior_hist
 ggsave(posterior_hist, filename = "posterior_hist_with_year.png")
 
 
+
+effects_summary <- effects_df %>% 
+  group_by(param, param_label, spp_label) %>% 
+  summarize(mean = mean(value), 
+            lwr = quantile(value, .025),
+            upr = quantile(value, .975),
+            prob_pos = sum(value>0)/500)
 
 
 ################################################################################################################################
