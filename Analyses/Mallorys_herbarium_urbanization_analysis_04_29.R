@@ -201,8 +201,13 @@ disturbance <- ggplot(endo_herb_disturbance)+
 disturbance
 ggsave(disturbance, filename = "disturbance_dimensions.png")
 cor(endo_herb$PercentAg, endo_herb$PercentUrban)
+cor(endo_herb$PercentUrban, endo_herb$std_nit)
+cor(endo_herb$PercentAg, endo_herb$NO3_mean)
 
 cor(endo_herb$PercentAg, endo_herb$PercentUrban, method = "spearman")
+cor(endo_herb$PercentUrban, endo_herb$std_nit, method = "spearman")
+cor(endo_herb$PercentAg, endo_herb$std_nit, method = "spearman")
+
 ggplot(endo_herb)+
   geom_point(aes(x = PercentAg, y = NO3_mean, color = Spp_code))
 
