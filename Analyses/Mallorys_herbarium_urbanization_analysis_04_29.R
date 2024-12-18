@@ -43,7 +43,7 @@ species_names <- c("A. hyemalis", "A. perennans", "E. virginicus")
 
 Mallorypath <- "C:/Users/malpa/OneDrive/Documents/EndoHerbQGIS/"
 Joshpath <- "~/Dropbox/Josh&Tom - shared/Endo_Herbarium/"
-path <- Joshpath
+path <- Mallorypath
 
 
 # endo_herb_georef <- read_csv(file = paste0(path, "Zonalhist_NLCD_10km_.csv")) %>%
@@ -88,7 +88,7 @@ path <- Joshpath
 # endo_herb <- nitendoherb
 # write.csv(endo_herb, file = "EndoHerb_withNitrogen.csv")
 
-endo_herb <- read_csv(file = "Analyses/EndoHerb_withNitrogen.csv") %>%
+endo_herb <- read_csv(file = "EndoHerb_withNitrogen.csv") %>%
   mutate(sample_temp = Sample_id) %>%
   separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
   mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
@@ -231,7 +231,7 @@ summary_endo_herb <- endo_herb %>%
             avg_month = mode(as.numeric(month)))
 
 #########################################################################################
-####################### Map Figure Code ################################################
+####################### Urban Map Figure ################################################
 ########################################################################################
 
 #load in map outline data
@@ -258,11 +258,12 @@ endo_urb_map <- ggplot(data = counties_data) +
   geom_polygon(aes(x = long, y = lat, group = group, fill = PercentUrban), color = "darkgray", linewidth = .1) +
   coord_cartesian(xlim = c(-109, -68), ylim = c(25, 48))+
   scale_fill_gradient(low = "lightgray", high = "#021475", na.value = NA)+
-  labs(x = "Longitude", y = "Latitude", fill = "Urban Cover %")+
+  labs(x = "Longitude", y = "Latitude", fill = "% Urban")+
   theme_light()+
   theme(legend.text = element_text(face = "italic"))+
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank())
+endo_urb_map
 
 ###############################################################################
 ############################ agricultural map ################################
@@ -289,11 +290,11 @@ endo_ag_map <- ggplot(data = counties_data_ag) +
   theme(legend.text = element_text(face = "italic")) +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank())+
-  labs(x = "Longitude", y = "Latitude", fill = "Agricultural %")
-
+  labs(x = "Longitude", y = "Latitude", fill = "% Agricultural")
+endo_ag_map
 
 #################################################################################
-################################## nitrogen map#################################
+################################## nitrogen map #################################
 ################################################################################
 
 #Join map outline data with endo_herb data
@@ -317,15 +318,14 @@ endo_nit_map <- ggplot(data = counties_data_nit) +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank())+
   theme(legend.text = element_text(face = "italic")) +
-  labs(x = "Longitude", y = "Latitude", fill = "Nitrogen Dep")
+  labs(x = "Longitude", y = "Latitude", fill = "Kg N/sqkm")
 
 #Compile maps into one panel
 mapfig <-  endo_ag_map +endo_urb_map + endo_nit_map + plot_layout(ncol = 3) + plot_annotation(tag_levels = "A")
 # mapfig <-  endo_ag_map /endo_urb_map / endo_nit_map + plot_layout(ncol = 1) + plot_annotation(tag_levels = "A")
 
 #Save map file
-ggsave(mapfig, file = "Map_Figure.png", width = 5, height = 10)
-ggsave(mapfig, file = "Map_Figure.png", width = 18, height = 5)
+ggsave(mapfig, file = "Map_Figure.png", width = 16, height = 3)
 
 
 ##########################################################################################
@@ -759,6 +759,7 @@ effects_summary <- effects_df %>%
             lwr = quantile(value, .025),
             upr = quantile(value, .975),
             prob_pos = sum(value>0)/500)
+write.csv(effects_summary, file = "Posterior_prob_results.csv")
 
 ################################################################################################################################
 ##########  Assessing model fit     ###############
