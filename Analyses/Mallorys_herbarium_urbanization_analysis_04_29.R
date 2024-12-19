@@ -21,6 +21,7 @@ library(tidyterra)
 #issue with vctrs namespace, .0.60 is loaded but need updated version
 
 library(tidybayes) # using this for dotplots
+library(GGally)
 library(patchwork)
 library(ggmap)
 library(pROC)
@@ -201,14 +202,98 @@ disturbance <- ggplot(endo_herb_disturbance)+
 disturbance
 ggsave(disturbance, filename = "disturbance_dimensions.png")
 cor(endo_herb$PercentAg, endo_herb$PercentUrban)
+cor(endo_herb$PercentUrban, endo_herb$std_nit)
+cor(endo_herb$PercentAg, endo_herb$NO3_mean)
 
 cor(endo_herb$PercentAg, endo_herb$PercentUrban, method = "spearman")
-ggplot(endo_herb)+
-  geom_point(aes(x = PercentAg, y = NO3_mean, color = Spp_code))
+cor(endo_herb$PercentUrban, endo_herb$std_nit, method = "spearman")
+cor(endo_herb$PercentAg, endo_herb$std_nit, method = "spearman")
 
 
-ggplot(endo_herb)+
-  geom_point(aes(x = PercentUrban, y = NO3_mean))
+predictors <- data.frame("PercentAg" = endo_herb$PercentAg,"PercentUrb" = endo_herb$PercentUrban, "NitrogenDeposition" = endo_herb$NO3_mean)
+pearson_correlations <- as_tibble(cor(predictors, method = "pearson"), rownames = "rownames") %>% 
+  pivot_longer(cols = -rownames, names_to = "colnames", values_to = "correlation") %>% mutate(type = "Pearson Correlation")
+spearman_correlations <- as_tibble(cor(predictors, method = "spearman"), rownames = "rownames") %>% 
+  pivot_longer(cols = -rownames, names_to = "colnames", values_to = "correlation")%>% mutate(type = "Spearman Correlation")
+
+correlations <- pearson_correlations %>% 
+  bind_rows(spearman_correlations) %>% 
+  mutate(correlation = case_when(rownames == "PercentAg" & colnames == "PercentUrb" ~ NA, 
+                                 rownames == "NitrogenDeposition" & colnames == "PercentUrb" |rownames == "NitrogenDeposition" & colnames == "PercentAg"  ~ NA,
+                                 TRUE ~ correlation) )
+
+
+predictor_correlations <- ggplot(correlations)+
+  geom_tile(aes(x = colnames, y = rownames, fill = correlation))+
+  geom_text(aes(x = colnames, y = rownames, label = round(correlation, 3)))+
+  scale_fill_gradientn( colors = c("#998ec3",  "grey95", "#f1a340"), limits = c(-1,1), na.value = "white")+
+  facet_wrap(~type)+
+  labs(x = "", y = "", fill = "Correlation\n Coefficient")+
+  coord_equal()+
+  theme_minimal() +
+  theme(axis.text.x = element_text(hjust = 1, angle = 45))
+ggsave(predictor_correlations, filename = "predictor_correlations.png", width = 10, height = 10)
+
+# calculating variance inflation factors
+vif.m <- lm(Endo_status_liberal~PercentAg +  PercentUrban + NO3_mean, data = endo_herb)
+vif <- car::vif(vif.m, type="terms")
+vif_values <- tibble("vif" = vif, "term" = names(vif))
+
+ggplot(vif_values)+
+  geom_point(aes(x = term, y = vif))+
+  geom_line(aes(x = term, y = vif, group = 1))+
+  ylim(0,5) + labs(y = "Variance Inflation Factor")+
+  theme_minimal()
+
+
+
+
+# making a plot of the relationship between all predictors
+
+
+# first defining a function to assign color of background according to value of correlation
+correlation_color_fxn <- function(data, mapping, method="spearman", use="pairwise", ...){
+  
+  # grab data
+  x <- eval_data_col(data, mapping$x)
+  y <- eval_data_col(data, mapping$y)
+  
+  # calculate correlation
+  corr <- cor(x, y, method=method, use=use)
+  
+  # calculate colour based on correlation value
+  # Here I have set a correlation of minus one to blue, 
+  # zero to white, and one to red 
+  # Change this to suit: possibly extend to add as an argument of `my_fn`
+  colFn <- colorRampPalette(c("blue", "white", "red"), interpolate ='spline')
+  fill <- colFn(100)[findInterval(corr, seq(-1, 1, length=100))]
+  
+  ggally_cor(data = data, mapping = mapping, title = expression(rho), parse = T, stars = F, ...) + 
+    theme_void() +
+    theme(panel.background = element_rect(fill=fill, color = "white"))
+}
+
+pairs_plot <- ggpairs(predictors,
+        upper = list(continuous = correlation_color_fxn),
+        diag = list(continuous = function(...)
+          ggally_barDiag(..., fill = "grey30",  bins = 50) + theme_minimal()),
+        lower = list(continuous = function(...)
+          ggally_points(..., color = "grey30", shape = 21) + theme_minimal()))+
+  theme(# adjust strip texts
+    strip.background = element_blank(), # remove color
+    strip.text = element_text(size=12), # change font and font size
+    axis.line = element_line(colour = "grey"),
+    # remove grid
+    panel.grid.minor = element_blank(),   # remove smaller gridlines
+    # panel.grid.major = element_blank()    # remove larger gridlines
+  ) 
+
+pairs_plot
+
+ggsave(pairs_plot, filename = "pairs_plot.png", width = 6, height = 6)
+
+
+
 
 
 mode <- function(codes){
@@ -1383,24 +1468,6 @@ ggsave(posterior_hist, filename = "posterior_hist_without_nitrogen.png")
 ##########  Now re-fitting the model to include nitrogen deposition as a predictor ###############
 ################################################################################################################################
 
-# First making a plot of the relationship between ag and urb and nitrogen
-
-
-disturbanceXnitrogen <- ggplot(endo_herb_disturbance)+
-  geom_point(aes(x = PercentAg, y = NO3_mean, color = NO3_mean))+
-  scale_color_viridis_c()+
-  geom_point(aes(x = quantile(PercentAg, .05), y = quantile(NO3_mean, .95)), color = "#542788", size = 4, shape = 4)+
-  geom_point(aes(y = quantile(NO3_mean, .05), x = quantile(PercentAg, .95)), color = "#b35806", size = 4, shape = 4)+
-  geom_point(aes(y = quantile(NO3_mean, .05), x = quantile(PercentAg, .05)), color = "black", size = 4, shape = 4)+
-  # labs(x = "Percent Ag. (%)", y = "Percent Urban (%)", color = "Nitrogen \n Deposition")+
-  theme_bw()
-
-
-disturbanceXnitrogen
-ggsave(disturbanceXnitrogen, filename = "disturbanceXnitrogen_dimensions.png")
-cor(endo_herb$PercentAg, endo_herb$PercentUrban)
-cor(endo_herb$PercentAg, endo_herb$NO3_mean)
-cor(endo_herb$PercentUrban, endo_herb$NO3_mean)
 
 
 # version with all species in one model. Note that we remove the intercept, and then we have to specify that the species is in the fixed effects model
