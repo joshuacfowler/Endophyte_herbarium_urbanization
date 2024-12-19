@@ -316,11 +316,11 @@ endo_nit_map <- ggplot(data = counties_data_nit) +
   labs(x = "Longitude", y = "Latitude", fill = "Kg N/sqkm")
 
 #Compile maps into one panel
-mapfig <-  endo_ag_map +endo_urb_map + endo_nit_map + plot_layout(ncol = 3) + plot_annotation(tag_levels = "A")
-# mapfig <-  endo_ag_map /endo_urb_map / endo_nit_map + plot_layout(ncol = 1) + plot_annotation(tag_levels = "A")
+#mapfig <-  endo_ag_map +endo_urb_map + endo_nit_map + plot_layout(ncol = 3) + plot_annotation(tag_levels = "A")
+mapfig <-  endo_ag_map /endo_urb_map / endo_nit_map + plot_layout(ncol = 1) + plot_annotation(tag_levels = "A")
 
 #Save map file
-ggsave(mapfig, file = "Map_Figure.png", width = 16, height = 3)
+ggsave(mapfig, file = "Map_Figure.png", width = 5, height = 9)
 
 
 ##########################################################################################
@@ -669,7 +669,7 @@ nit_trend <- ggplot(nit.pred) +
   geom_line(aes(NO3_mean, mean)) +
   geom_ribbon(aes(NO3_mean, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#BF00A0") +
   geom_ribbon(aes(NO3_mean, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
-  # geom_point(data = ag_data_binned, aes(x = mean_ag, y = mean_endo, size = sample, fill = year_bin), color = "black", shape = 21)+
+  #geom_point(data = ag_data_binned, aes(x = mean_ag, y = mean_endo, size = sample, fill = year_bin), color = "black", shape = 21)+
   facet_wrap(~species, ncol = 1, scales = "free_x", strip.position="right")+  
   # scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
   # scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
