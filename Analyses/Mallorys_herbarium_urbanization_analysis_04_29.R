@@ -352,6 +352,18 @@ unique_localities <- paste0(endo_herb$State, endo_herb$County)
 length(unique(unique_localities))
 
 #########################################################################################
+################################# urb and ag max and min percentages, N ####################
+#########################################################################################
+max(endo_herb$PercentAg)
+min(endo_herb$PercentAg)
+
+max(endo_herb$PercentUrban)
+min(endo_herb$PercentUrban)
+
+max(endo_herb$NO3_mean)
+min(endo_herb$NO3_mean)
+
+#########################################################################################
 ####################### Urban Map Figure ################################################
 ########################################################################################
 
