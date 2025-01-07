@@ -346,6 +346,10 @@ sum(just_aghy$Endo_status_liberal == just_aghy$Endo_status_conservative)/nrow(ju
 sum(just_elvi$Endo_status_liberal == just_elvi$Endo_status_conservative)/nrow(just_elvi)
 sum(just_agpe$Endo_status_liberal == just_agpe$Endo_status_conservative)/nrow(just_agpe)
 
+#how many counties in our dataset?
+#combine state and county columns since some counties have the same name but are in different states
+unique_localities <- paste0(endo_herb$State, endo_herb$County)
+length(unique(unique_localities))
 
 #########################################################################################
 ####################### Urban Map Figure ################################################
