@@ -339,6 +339,15 @@ mean(just_elvi$NO3_mean)
 mean(just_agpe$NO3_mean)
 
 #########################################################################################
+################################### percentage of matching lib/cons scores###############
+#########################################################################################
+
+sum(just_aghy$Endo_status_liberal == just_aghy$Endo_status_conservative)/nrow(just_aghy)
+sum(just_elvi$Endo_status_liberal == just_elvi$Endo_status_conservative)/nrow(just_elvi)
+sum(just_agpe$Endo_status_liberal == just_agpe$Endo_status_conservative)/nrow(just_agpe)
+
+
+#########################################################################################
 ####################### Urban Map Figure ################################################
 ########################################################################################
 
