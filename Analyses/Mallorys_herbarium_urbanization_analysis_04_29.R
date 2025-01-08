@@ -23,6 +23,7 @@ library(tidyterra)
 library(tidybayes) # using this for dotplots
 library(GGally)
 library(patchwork)
+library(egg) # for labelling panels
 library(ggmap)
 library(pROC)
 library(ggplot2)
@@ -43,8 +44,8 @@ species_names <- c("A. hyemalis", "A. perennans", "E. virginicus")
 
 
 Mallorypath <- "C:/Users/malpa/OneDrive/Documents/EndoHerbQGIS/"
-Joshpath <- "~/Dropbox/Josh&Tom - shared/Endo_Herbarium/"
-path <- Mallorypath
+Joshpath <- "Analyses/"
+path <- Joshpath
 
 
 # endo_herb_georef <- read_csv(file = paste0(path, "Zonalhist_NLCD_10km_.csv")) %>%
@@ -89,7 +90,7 @@ path <- Mallorypath
 # endo_herb <- nitendoherb
 # write.csv(endo_herb, file = "EndoHerb_withNitrogen.csv")
 
-endo_herb <- read_csv(file = "EndoHerb_withNitrogen.csv") %>%
+endo_herb <- read_csv(file = "Analyses/EndoHerb_withNitrogen.csv") %>%
   mutate(sample_temp = Sample_id) %>%
   separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
   mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
@@ -159,7 +160,8 @@ collections_map <- ggplot()+
   geom_map(data = outline_map, map = outline_map, aes(long, lat, map_id = region), color = "grey", linewidth = .1, fill = "#FAF9F6")+
   geom_map(data = states_shape, map = states_shape, aes(long, lat, map_id = region), color = "grey", linewidth = .1, fill = NA)+
   geom_point(data = endo_herb, aes(x = lon, y = lat, color = species), alpha = .7, lwd = .5)+
-  coord_sf(xlim = c(-109,-68), ylim = c(21,49))+
+  lims(x = c(-109,-68), y = c(21,49))+
+  coords_sf()+
   scale_color_manual(values = species_colors)+
   theme_light()+
   theme(legend.text = element_text(face = "italic"))+
@@ -717,14 +719,35 @@ nit.pred <- predict(
 
 values <-  c("#b2abd2", "#5e3c99")
 
+
+ag_binned <- data %>% 
+  mutate(ag_bin = cut(PercentAg, breaks = 30)) %>% 
+  group_by(species, ag_bin) %>% 
+  summarize(mean_endo = mean(Endo_status_liberal),
+            mean_ag = mean(PercentAg),
+            sample = n())
+
+urb_binned <- data %>% 
+  mutate(urb_bin = cut(PercentUrban, breaks = 30)) %>% 
+  group_by(species, urb_bin) %>% 
+  summarize(mean_endo = mean(Endo_status_liberal),
+            mean_urb = mean(PercentUrban),
+            sample = n())
+
+nit_binned <- data %>% 
+  mutate(nit_bin = cut(NO3_mean, breaks = 30)) %>% 
+  group_by(species, nit_bin) %>% 
+  summarize(mean_endo = mean(Endo_status_liberal),
+            mean_nit = mean(NO3_mean),
+            sample = n())
+
 ag_trend <- ggplot(ag.pred) +
   geom_line(aes(PercentAg, mean)) +
   geom_ribbon(aes(PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#B38600") +
   geom_ribbon(aes(PercentAg, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
-  # geom_point(data = ag_data_binned, aes(x = mean_ag, y = mean_endo, size = sample, fill = year_bin), color = "black", shape = 21)+
+  geom_point(data = ag_binned, aes(x = mean_ag, y = mean_endo, size = sample), color = "black", shape = 21)+
+  scale_size_continuous(limits=c(1,260))+
   facet_wrap(~species,  ncol = 1, scales = "free_x", strip.position="right")+  
-  # scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
-  # scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
   labs(y = "Endophyte Prevalence", x = "Percent Ag. (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
   theme_classic()+
   theme(strip.background = element_blank(),
@@ -737,10 +760,9 @@ urb_trend <- ggplot(urb.pred) +
   geom_line(aes(PercentUrban, mean)) +
   geom_ribbon(aes(PercentUrban, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#021475") +
   geom_ribbon(aes(PercentUrban, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
-  # geom_point(data = ag_data_binned, aes(x = mean_ag, y = mean_endo, size = sample, fill = year_bin), color = "black", shape = 21)+
+  geom_point(data = urb_binned, aes(x = mean_urb, y = mean_endo, size = sample), color = "black", shape = 21)+
+  scale_size_continuous(limits=c(1,260))+
   facet_wrap(~species, ncol = 1, scales = "free_x", strip.position="right")+  
-  # scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
-  # scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
   labs(y = "Endophyte Prevalence", x = "Percent Urban (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
   theme_classic()+
   theme(strip.background = element_blank(),
@@ -754,10 +776,9 @@ nit_trend <- ggplot(nit.pred) +
   geom_line(aes(NO3_mean, mean)) +
   geom_ribbon(aes(NO3_mean, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#BF00A0") +
   geom_ribbon(aes(NO3_mean, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
-  #geom_point(data = ag_data_binned, aes(x = mean_ag, y = mean_endo, size = sample, fill = year_bin), color = "black", shape = 21)+
+  geom_point(data = nit_binned, aes(x = mean_nit, y = mean_endo, size = sample), color = "black", shape = 21)+
+  scale_size_continuous(limits=c(1,260))+
   facet_wrap(~species, ncol = 1, scales = "free_x", strip.position="right")+  
-  # scale_color_manual(values = c("#b2abd2", "#5e3c99"))+
-  # scale_fill_manual(values = c("#b2abd2", "#5e3c99"))+
   labs(y = "Endophyte Prevalence", x = "Nitrogen Deposition (kg N/km^2)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
   theme_classic()+
   theme(strip.background = element_blank(), strip.text = element_text(face = "italic", size = rel(1.1)), strip.text.y.right = element_text(angle = 0),
@@ -765,9 +786,11 @@ nit_trend <- ggplot(nit.pred) +
         plot.margin = unit(c(0,.1,.1,.1), "line"))+
   lims(y = c(0,1))
 
-
-fig1 <- ag_trend + urb_trend + nit_trend + plot_layout(ncol = 3) #+ plot_annotation(tag_levels = "A")
-ggsave(fig1, file = "Figure_1.png", width = 8.5, height = 8)
+ag_trend <- tag_facet(ag_trend)
+urb_trend <- tag_facet(urb_trend, tag_pool =  letters[-(1:3)])
+nit_trend <- tag_facet(nit_trend, tag_pool =  letters[-(1:6)])
+fig1 <-   ag_trend + urb_trend + nit_trend + plot_layout(ncol = 3, guides = "collect") 
+ggsave(fig1, file = "Figure_1.png", width = 10, height = 8)
 
 ################################################################################################################################
 ##########  Plotting the posteriors from the model without year effect ###############
