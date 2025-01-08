@@ -312,6 +312,59 @@ summary_endo_herb <- endo_herb %>%
             avg_seed = mean(seed_scored, na.rm = T),
             avg_month = mode(as.numeric(month)))
 
+#######################################################################################
+################################## Mean endo status by species###########################
+#######################################################################################
+
+just_aghy <- endo_herb %>%
+  filter(Spp_code == "AGHY", na.rm = TRUE)
+mean(just_aghy$Endo_status_liberal)
+mean(just_aghy$Endo_status_conservative)
+
+just_elvi <- endo_herb %>%
+  filter(Spp_code == "ELVI", na.rm = TRUE)
+mean(just_elvi$Endo_status_liberal)
+mean(just_elvi$Endo_status_conservative)
+
+just_agpe <- endo_herb %>%
+  filter(Spp_code == "AGPE", na.rm = TRUE)
+mean(just_agpe$Endo_status_liberal)
+mean(just_agpe$Endo_status_conservative)
+
+
+#########################################################################################
+##################################### Mean Nitrogen dep by species ######################
+#########################################################################################
+
+mean(just_aghy$NO3_mean)
+mean(just_elvi$NO3_mean)
+mean(just_agpe$NO3_mean)
+
+#########################################################################################
+################################### percentage of matching lib/cons scores###############
+#########################################################################################
+
+sum(just_aghy$Endo_status_liberal == just_aghy$Endo_status_conservative)/nrow(just_aghy)
+sum(just_elvi$Endo_status_liberal == just_elvi$Endo_status_conservative)/nrow(just_elvi)
+sum(just_agpe$Endo_status_liberal == just_agpe$Endo_status_conservative)/nrow(just_agpe)
+
+#how many counties in our dataset?
+#combine state and county columns since some counties have the same name but are in different states
+unique_localities <- paste0(endo_herb$State, endo_herb$County)
+length(unique(unique_localities))
+
+#########################################################################################
+################################# urb and ag max and min percentages, N ####################
+#########################################################################################
+max(endo_herb$PercentAg)
+min(endo_herb$PercentAg)
+
+max(endo_herb$PercentUrban)
+min(endo_herb$PercentUrban)
+
+max(endo_herb$NO3_mean)
+min(endo_herb$NO3_mean)
+
 #########################################################################################
 ####################### Urban Map Figure ################################################
 ########################################################################################
