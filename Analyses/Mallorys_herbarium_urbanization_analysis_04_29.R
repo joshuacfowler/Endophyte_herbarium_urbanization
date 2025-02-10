@@ -45,7 +45,7 @@ species_names <- c("A. hyemalis", "A. perennans", "E. virginicus")
 
 Mallorypath <- "C:/Users/malpa/OneDrive/Documents/EndoHerbQGIS/"
 Joshpath <- "Analyses/"
-path <- Joshpath
+path <- Mallorypath
 
 
 # endo_herb_georef <- read_csv(file = paste0(path, "Zonalhist_NLCD_10km_.csv")) %>%
@@ -84,13 +84,13 @@ path <- Joshpath
 #                               year>=1970 ~ "post-1970")) %>%
 #   mutate(endo_status_text = case_when(Endo_statu == 0 ~ "E-",
 #                                       Endo_statu == 1 ~ "E+"))
-# # #loading in nitrogen data too
+# #loading in nitrogen data too
 # nit <- read.csv(file = "endo_herb_nit.csv")
 # nitendoherb <- merge(nit, endo_herb)
 # endo_herb <- nitendoherb
 # write.csv(endo_herb, file = "EndoHerb_withNitrogen.csv")
 
-endo_herb <- read_csv(file = "Analyses/EndoHerb_withNitrogen.csv") %>%
+endo_herb <- read_csv(file = "EndoHerb_withNitrogen.csv") %>%
   mutate(sample_temp = Sample_id) %>%
   separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
   mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
@@ -581,6 +581,11 @@ s_components.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*NO3_mean, model =
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
 
+s_components.Nitrogen <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*TIN_mean, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+
 # s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*NO3_mean, model = "fixed")+
 #   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
 #   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
@@ -592,6 +597,10 @@ s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*Perce
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde) 
 
+s_components.nh4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*NO3_mean + Spp_code*NH4_mean, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde) 
 
 # s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_ag + Spp_code*std_urb + Spp_code*std_nit, model = "fixed")+
 #   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
@@ -671,6 +680,21 @@ fit.4 <- bru(s_components.4,
                verbose = TRUE
              )
 )
+
+fit.nitrogen <- bru(s_components.Nitrogen,
+                   like(
+                     formula = s_formula,
+                     family = "binomial",
+                     Ntrials = 1,
+                     data = data
+                   ),
+                   options = list(
+                     control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
+                     control.inla = list(int.strategy = "eb"),
+                     verbose = TRUE
+                   )
+)
+
 
 # fit.5 <- bru(s_components.5,
 #              like(
@@ -838,6 +862,8 @@ nit_trend <- ggplot(nit.pred) +
         legend.text = element_text(face = "italic"),
         plot.margin = unit(c(0,.1,.1,.1), "line"))+
   lims(y = c(0,1))
+
+
 
 ag_trend <- tag_facet(ag_trend)
 urb_trend <- tag_facet(urb_trend, tag_pool =  letters[-(1:3)])
