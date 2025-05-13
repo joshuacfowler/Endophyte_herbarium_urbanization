@@ -90,7 +90,7 @@ path <- Joshpath
 # endo_herb <- nitendoherb
 # write.csv(endo_herb, file = "EndoHerb_withNitrogen.csv")
 
-endo_herb <- read_csv(file = "Analyses/EndoHerb_withNitrogen.csv") %>%
+endo_herb_10km <- read_csv(file = "~/Dropbox/endophyte_herbarium_urbanization_project/Mallorys_data/EndoHerb_withNitrogen.csv") %>%
   mutate(sample_temp = Sample_id) %>%
   separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
   mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
@@ -100,19 +100,40 @@ endo_herb <- read_csv(file = "Analyses/EndoHerb_withNitrogen.csv") %>%
                              spp_code == "AGPE" ~ "A. perennans",
                              spp_code == "ELVI" ~ "E. virginicus")) %>%
   mutate(std_year = (year-mean(year, na.rm = T)),
-         std_nit = (NO3_mean - mean(NO3_mean, na.rm = T))/sd(NO3_mean, na.rm = T),
-         std_urb = (PercentUrban - mean(PercentUrban, na.rm = T))/sd(PercentUrban, na.rm = T),
-         std_ag = (PercentAg - mean(PercentAg, na.rm = T))/sd(PercentAg, na.rm = T)) %>%  # I am mean centering but not scaling by standard deviation to preserve units for interpretation of the parameter values
+         std_NO3 = (NO3_mean - mean(NO3_mean, na.rm = T)),
+         std_NH4 = (NH4_mean - mean(NH4_mean, na.rm = T)),
+         std_TIN = (TIN_mean - mean(TIN_mean, na.rm = T)),
+         std_urb = (PercentUrban - mean(PercentUrban, na.rm = T)),
+         std_ag = (PercentAg - mean(PercentAg, na.rm = T))) %>%  # I am mean centering but not scaling by standard deviation to preserve units for interpretation of the parameter values
   filter(scorer_id != "Scorer26") %>% 
   filter(!is.na(Endo_status_liberal)) %>%
   filter(!is.na(spp_code)) %>%
   filter(!is.na(lon) & !is.na(year)) %>%
-  filter(!is.na(PercentAg), !is.na(NO3_mean))
+  filter(!is.na(PercentAg), !is.na(NO3_mean)) 
 
-# Looking at just AGHY for now, but we can likely fit one model for all species
-# endo_herb <- endo_herb %>% 
-#   filter(Spp_code == "AGHY")
 
+# dataset with land cover types extracted from 30km radius buffer around points
+endo_herb_30km <- read_csv(file = "~/Dropbox/endophyte_herbarium_urbanization_project/Mallorys_data/EndoHerb_withNitrogen_avgcosize.csv") %>%
+  mutate(sample_temp = Sample_id) %>%
+  separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
+  mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
+                                             spp_code == "AGPE" ~ "2",
+                                             spp_code == "ELVI" ~ "3"))) %>%
+  mutate(species = case_when(spp_code == "AGHY" ~ "A. hyemalis",
+                             spp_code == "AGPE" ~ "A. perennans",
+                             spp_code == "ELVI" ~ "E. virginicus")) %>%
+  mutate(std_year = (year-mean(year, na.rm = T)),
+         # std_nit = (NO3_mean - mean(NO3_mean, na.rm = T))/sd(NO3_mean, na.rm = T),
+         std_urb_30km = (PercentUrban - mean(PercentUrban, na.rm = T)),
+         std_ag_30km = (PercentAg - mean(PercentAg, na.rm = T))) %>%  # I am mean centering but not scaling by standard deviation to preserve units for interpretation of the parameter values
+  filter(scorer_id != "Scorer26") %>% 
+  filter(!is.na(Endo_status_liberal)) %>%
+  filter(!is.na(spp_code)) %>%
+  filter(!is.na(lon) & !is.na(year)) %>%
+  filter(!is.na(PercentAg), !is.na(NO3_mean)) %>% 
+  select(Institution_specimen_id, Sample_id, scorer_id, new_id, std_urb_30km, std_ag_30km)
+
+endo_herb <- endo_herb_10km %>% left_join(endo_herb_30km)
 # updating the collector labels
 
 # Creating scorer and collector levels
@@ -161,7 +182,7 @@ collections_map <- ggplot()+
   geom_map(data = states_shape, map = states_shape, aes(long, lat, map_id = region), color = "grey", linewidth = .1, fill = NA)+
   geom_point(data = endo_herb, aes(x = lon, y = lat, color = species), alpha = .7, lwd = .5)+
   lims(x = c(-109,-68), y = c(21,49))+
-  coords_sf()+
+  coord_sf()+
   scale_color_manual(values = species_colors)+
   theme_light()+
   theme(legend.text = element_text(face = "italic"))+
@@ -225,7 +246,7 @@ correlations <- pearson_correlations %>%
                                  TRUE ~ correlation) )
 
 
-predictor_correlations <- ggplot(correlations)+
+predictor_correlations_pearson <- ggplot(filter(correlations, type == "Pearson Correlation"))+
   geom_tile(aes(x = colnames, y = rownames, fill = correlation))+
   geom_text(aes(x = colnames, y = rownames, label = round(correlation, 3)))+
   scale_fill_gradientn( colors = c("#998ec3",  "grey95", "#f1a340"), limits = c(-1,1), na.value = "white")+
@@ -234,27 +255,41 @@ predictor_correlations <- ggplot(correlations)+
   coord_equal()+
   theme_minimal() +
   theme(axis.text.x = element_text(hjust = 1, angle = 45))
-ggsave(predictor_correlations, filename = "predictor_correlations.png", width = 10, height = 10)
+predictor_correlations_spearman <- ggplot(filter(correlations, type == "Spearman Correlation"))+
+  geom_tile(aes(x = colnames, y = rownames, fill = correlation))+
+  geom_text(aes(x = colnames, y = rownames, label = round(correlation, 3)))+
+  scale_fill_gradientn( colors = c("#998ec3",  "grey95", "#f1a340"), limits = c(-1,1), na.value = "white")+
+  facet_wrap(~type)+
+  labs(x = "", y = "", fill = "Correlation\n Coefficient")+
+  coord_equal()+
+  theme_minimal() +
+  theme(axis.text.x = element_text(hjust = 1, angle = 45))
+predictor_correlations <- predictor_correlations_pearson + predictor_correlations_spearman + plot_annotation(tag_levels =  "A") + plot_layout(nrow = 2, guides = "collect")
+ggsave(predictor_correlations, filename = "predictor_correlations.png", width = 6, height = )
 
 # calculating variance inflation factors
-vif.m <- lm(Endo_status_liberal~PercentAg +  PercentUrban + NO3_mean, data = endo_herb)
+vif.m <- lm(Endo_status_liberal~PercentAg +  PercentUrban + TIN_mean, data = endo_herb)
 vif <- car::vif(vif.m, type="terms")
-vif_values <- tibble("vif" = vif, "term" = names(vif))
+vif_values <- tibble("vif" = vif, "term" = names(vif)) %>% 
+  mutate(Predictor = case_when(term == "PercentAg" ~ "Percent Agr.",
+                               term == "PercentUrban" ~ "Percent Urb.",
+                               term == "TIN_mean" ~ "Total Nit."))
 
-ggplot(vif_values)+
-  geom_point(aes(x = term, y = vif))+
-  geom_line(aes(x = term, y = vif, group = 1))+
-  ylim(0,5) + labs(y = "Variance Inflation Factor")+
+vif_plot <- ggplot(vif_values)+
+  geom_point(aes(x = Predictor, y = vif))+
+  geom_line(aes(x = Predictor, y = vif, group = 1))+
+  ylim(0,2) + labs(y = "Variance Inflation Factor", x = "Predictor")+
   theme_minimal()
 
 
+ggsave(vif_plot, filename = "vif_plot.png", width = 4, height = 4)
 
 
 # making a plot of the relationship between all predictors
 
 
 # first defining a function to assign color of background according to value of correlation
-correlation_color_fxn <- function(data, mapping, method="spearman", use="pairwise", ...){
+correlation_color_fxn <- function(data, mapping, method="pearson", use="pairwise", ...){
   
   # grab data
   x <- eval_data_col(data, mapping$x)
@@ -335,10 +370,13 @@ mean(just_agpe$Endo_status_conservative)
 #########################################################################################
 ##################################### Mean Nitrogen dep by species ######################
 #########################################################################################
+mean(endo_herb$TIN_mean)
+min(endo_herb$TIN_mean)
+max(endo_herb$TIN_mean)
 
-mean(just_aghy$NO3_mean)
-mean(just_elvi$NO3_mean)
-mean(just_agpe$NO3_mean)
+mean(just_aghy$TIN_mean)
+mean(just_elvi$TIN_mean)
+mean(just_agpe$TIN_mean)
 
 #########################################################################################
 ################################### percentage of matching lib/cons scores###############
@@ -511,17 +549,18 @@ mesh <- fm_mesh_2d_inla(
   # crs=CRS(proj4string(bdry_polygon))
 ) # cutoff is min edge
 # plot it
-#plot(mesh)
+# plot(mesh)
 
 
 mesh_plot <- ggplot() +
   gg(data = mesh) +
-  geom_point(data = data, aes(x = easting, y = northing, col = species), size = 1) +
+  geom_point(data = data, aes(x = easting, y = northing, col = species), size = .8) +
   coord_sf()+
   theme_bw() +
-  labs(x = "", y = "")
+  labs(x = "", y = "", color = "Species")+
+  theme(legend.text = element_text(face = "italic"))
 # mesh_plot
-# ggsave(mesh_plot, filename = "Plots/mesh_plot.png", width = 6, height = 6)
+ggsave(mesh_plot, filename = "mesh_plot.png", width = 6, height = 5)
 
 
 
@@ -587,7 +626,7 @@ s_components.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*NO3_mean, model =
 #   space_int(coords, model = spde) 
 
 
-s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*NO3_mean, model = "fixed")+
+s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_ag + Spp_code*std_urb + Spp_code*std_TIN, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde) 
@@ -694,7 +733,7 @@ fit.5$dic$dic
 
 
 fit.1$mode$mode.status # a 0 or low value indicates "convergence"
-fit.2$mode$mode.status # a 0 or low value indicates "convergence"
+fit.4$mode$mode.status # a 0 or low value indicates "convergence"
 
 fit.1$summary.fixed
 fit.1$summary.random
@@ -719,31 +758,31 @@ min_urb<- min(data$PercentUrban)
 mean_urb <- mean(data$PercentUrban)
 max_urb<- max(data$PercentUrban)
 
-min_nit<- min(data$NO3_mean)
-mean_nit <- mean(data$NO3_mean)
-max_nit<- max(data$NO3_mean)
+min_nit<- min(data$TIN_mean)
+mean_nit <- mean(data$TIN_mean)
+max_nit<- max(data$TIN_mean)
 
 preddata.1 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
-                     PercentAg = rep(seq(min_ag, max_ag, length.out = 50), times = 3),
-                     PercentUrban = mean_urb,
-                     NO3_mean = mean_nit,
+                     std_ag = rep(seq(min_ag, max_ag, length.out = 50)-mean_ag, times = 3),
+                     std_urb = 0,
+                     std_TIN = 0,
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
                              Spp_code == "ELVI" ~ species_names[3]))
 preddata.2 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
-                     PercentAg = mean_ag,
-                     PercentUrban = rep(seq(min_urb, max_urb, length.out = 50), times = 3),
-                     NO3_mean = mean_nit,
+                     std_ag = 0,
+                     std_urb = rep(seq(min_urb, max_urb, length.out = 50)-mean_urb, times = 3),
+                     std_TIN = 0,
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
                              Spp_code == "ELVI" ~ species_names[3]))
 
 preddata.3 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
-                     PercentAg = mean_ag,
-                     PercentUrban = mean_urb,
-                     NO3_mean = rep(seq(min_nit, max_nit, length.out = 50), times = 3),
+                     std_ag = 0,
+                     std_urb = 0,
+                     std_TIN = rep(seq(min_nit, max_nit, length.out = 50)-mean_nit, times = 3),
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
@@ -754,21 +793,25 @@ ag.pred <- predict(
   newdata = preddata.1,
   formula = ~ invlogit(fixed),# + collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
-  n.samples = 100) 
+  n.samples = 100) %>% 
+  mutate(PercentAg = std_ag + mean_ag)
 
 urb.pred <- predict(
   fit.4,
   newdata = preddata.2,
   formula = ~ invlogit(fixed),# + collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
-  n.samples = 100) 
+  n.samples = 100) %>% 
+  mutate(PercentUrb = std_urb + mean_urb)
+
 
 nit.pred <- predict(
   fit.4,
   newdata = preddata.3,
   formula = ~ invlogit(fixed),# + collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
-  n.samples = 100) 
+  n.samples = 100) %>% 
+  mutate(mean_TIN = std_TIN + mean_nit)
 
 values <-  c("#b2abd2", "#5e3c99")
 
@@ -788,14 +831,14 @@ urb_binned <- data %>%
             sample = n())
 
 nit_binned <- data %>% 
-  mutate(nit_bin = cut(NO3_mean, breaks = 30)) %>% 
+  mutate(nit_bin = cut(TIN_mean, breaks = 30)) %>% 
   group_by(species, nit_bin) %>% 
   summarize(mean_endo = mean(Endo_status_liberal),
-            mean_nit = mean(NO3_mean),
+            mean_nit = mean(TIN_mean),
             sample = n())
 
 ag_trend <- ggplot(ag.pred) +
-  geom_line(aes(PercentAg, mean)) +
+  geom_line(aes(x = PercentAg, mean)) +
   geom_ribbon(aes(PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#B38600") +
   geom_ribbon(aes(PercentAg, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
   geom_point(data = ag_binned, aes(x = mean_ag, y = mean_endo, size = sample), color = "black", shape = 21)+
@@ -806,13 +849,13 @@ ag_trend <- ggplot(ag.pred) +
   theme(strip.background = element_blank(),
         strip.text = element_blank(),
         legend.text = element_text(face = "italic"),
-        plot.margin = unit(c(0,.1,.1,.1), "line"))+
-  lims(y = c(0,1), x = c(0, 100))
+        plot.margin = unit(c(0,.1,.1,.1), "line"))#+
+  # lims(y = c(0,1), x = c(0, 100))
 
 urb_trend <- ggplot(urb.pred) +
-  geom_line(aes(PercentUrban, mean)) +
-  geom_ribbon(aes(PercentUrban, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#021475") +
-  geom_ribbon(aes(PercentUrban, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
+  geom_line(aes(PercentUrb, mean)) +
+  geom_ribbon(aes(PercentUrb, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#021475") +
+  geom_ribbon(aes(PercentUrb, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
   geom_point(data = urb_binned, aes(x = mean_urb, y = mean_endo, size = sample), color = "black", shape = 21)+
   scale_size_continuous(limits=c(1,260))+
   facet_wrap(~species, ncol = 1, scales = "free_x", strip.position="right")+  
@@ -821,14 +864,13 @@ urb_trend <- ggplot(urb.pred) +
   theme(strip.background = element_blank(),
         strip.text = element_blank(),
         legend.text = element_text(face = "italic"),
-        plot.margin = unit(c(0,.1,.1,.1), "line"))+
-  lims(y = c(0,1))
+        plot.margin = unit(c(0,.1,.1,.1), "line"))
 
 
 nit_trend <- ggplot(nit.pred) +
-  geom_line(aes(NO3_mean, mean)) +
-  geom_ribbon(aes(NO3_mean, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#BF00A0") +
-  geom_ribbon(aes(NO3_mean, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
+  geom_line(aes(mean_TIN, mean)) +
+  geom_ribbon(aes(mean_TIN, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#BF00A0") +
+  geom_ribbon(aes(mean_TIN, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
   geom_point(data = nit_binned, aes(x = mean_nit, y = mean_endo, size = sample), color = "black", shape = 21)+
   scale_size_continuous(limits=c(1,260))+
   facet_wrap(~species, ncol = 1, scales = "free_x", strip.position="right")+  
@@ -836,14 +878,13 @@ nit_trend <- ggplot(nit.pred) +
   theme_classic()+
   theme(strip.background = element_blank(), strip.text = element_text(face = "italic", size = rel(1.1)), strip.text.y.right = element_text(angle = 0),
         legend.text = element_text(face = "italic"),
-        plot.margin = unit(c(0,.1,.1,.1), "line"))+
-  lims(y = c(0,1))
+        plot.margin = unit(c(0,.1,.1,.1), "line"))
 
 ag_trend <- tag_facet(ag_trend)
 urb_trend <- tag_facet(urb_trend, tag_pool =  letters[-(1:3)])
 nit_trend <- tag_facet(nit_trend, tag_pool =  letters[-(1:6)])
 fig1 <-   ag_trend + urb_trend + nit_trend + plot_layout(ncol = 3, guides = "collect") 
-ggsave(fig1, file = "Figure_1.png", width = 10, height = 8)
+ggsave(fig1, file = "Figure_2.png", width = 10, height = 8)
 
 ################################################################################################################################
 ##########  Plotting the posteriors from the model without year effect ###############
@@ -868,15 +909,15 @@ posteriors_df <- as_tibble(t(posteriors), rownames = "iteration")
 
 # Calculate the effects of the predictor, given that the reference level is for AGHY
 effects_df <- posteriors_df %>% 
-  mutate(NIT.AGHY = NO3_mean,
-         NIT.AGPE = NO3_mean+`Spp_codeAGPE:NO3_mean`,
-         NIT.ELVI = NO3_mean+`Spp_codeELVI:NO3_mean`,
-         AG.AGHY = PercentAg,
-         AG.AGPE = PercentAg+`Spp_codeAGPE:PercentAg`,
-         AG.ELVI = PercentAg+`Spp_codeELVI:PercentAg`,
-         URB.AGHY = PercentUrban,
-         URB.AGPE = PercentUrban+`Spp_codeAGPE:PercentUrban`,
-         URB.ELVI = PercentUrban+`Spp_codeELVI:PercentUrban`,
+  mutate(NIT.AGHY = std_TIN,
+         NIT.AGPE = std_TIN+`Spp_codeAGPE:std_TIN`,
+         NIT.ELVI = std_TIN+`Spp_codeELVI:std_TIN`,
+         AG.AGHY = std_ag,
+         AG.AGPE = std_ag+`Spp_codeAGPE:std_ag`,
+         AG.ELVI = std_ag+`Spp_codeELVI:std_ag`,
+         URB.AGHY = std_urb,
+         URB.AGPE = std_urb+`Spp_codeAGPE:std_urb`,
+         URB.ELVI = std_urb+`Spp_codeELVI:std_urb`,
          INT.AGHY = Spp_codeAGHY,
          INT.AGPE = Spp_codeAGPE,
          INT.ELVI = Spp_codeELVI) %>% 
