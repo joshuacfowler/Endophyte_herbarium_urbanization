@@ -45,7 +45,7 @@ species_names <- c("A. hyemalis", "A. perennans", "E. virginicus")
 
 Mallorypath <- "C:/Users/malpa/OneDrive/Documents/EndoHerbQGIS/"
 Joshpath <- "Analyses/"
-path <- Mallorypath
+path <- Joshpath
 
 
 # endo_herb_georef <- read_csv(file = paste0(path, "Zonalhist_NLCD_10km_.csv")) %>%
@@ -90,11 +90,8 @@ path <- Mallorypath
 # endo_herb <- nitendoherb
 # write.csv(endo_herb, file = "EndoHerb_withNitrogen.csv")
 
-<<<<<<< HEAD
 endo_herb_10km <- read_csv(file = "~/Dropbox/endophyte_herbarium_urbanization_project/Mallorys_data/EndoHerb_withNitrogen.csv") %>%
-=======
-endo_herb <- read_csv(file = "EndoHerb_withNitrogen.csv") %>%
->>>>>>> 04b99bfcec781793c70ed602dfec745df9028d49
+
   mutate(sample_temp = Sample_id) %>%
   separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
   mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
@@ -566,7 +563,7 @@ mesh_plot <- ggplot() +
   labs(x = "", y = "", color = "Species")+
   theme(legend.text = element_text(face = "italic"))
 # mesh_plot
-ggsave(mesh_plot, filename = "mesh_plot.png", width = 6, height = 5)
+# ggsave(mesh_plot, filename = "mesh_plot.png", width = 6, height = 5)
 
 
 
@@ -638,20 +635,20 @@ s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_ag + Spp_code*std_urb 
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde) 
 
-s_components.tin <- ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*TIN_mean, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde) 
-
-s_components.tinyr <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*TIN_mean, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-s_components.nh4yr <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*NH4_mean, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
+# s_components.tin <- ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*TIN_mean, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde) 
+# 
+# s_components.tinyr <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*TIN_mean, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.nh4yr <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*NH4_mean, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
 
 # s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_ag + Spp_code*std_urb + Spp_code*std_nit, model = "fixed")+
 #   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
@@ -913,7 +910,6 @@ ag_trend <- ggplot(ag.pred) +
   theme_classic()+
   theme(strip.background = element_blank(),
         strip.text = element_blank(),
-        legend.text = element_text(face = "italic"),
         plot.margin = unit(c(0,.1,.1,.1), "line"))#+
   # lims(y = c(0,1), x = c(0, 100))
 
@@ -928,7 +924,6 @@ urb_trend <- ggplot(urb.pred) +
   theme_classic()+
   theme(strip.background = element_blank(),
         strip.text = element_blank(),
-        legend.text = element_text(face = "italic"),
         plot.margin = unit(c(0,.1,.1,.1), "line"))
 
 
@@ -941,8 +936,8 @@ nit_trend <- ggplot(nit.pred) +
   facet_wrap(~species, ncol = 1, scales = "free_x", strip.position="right")+  
   labs(y = "Endophyte Prevalence", x = "Nitrogen Deposition (kg N/km^2)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
   theme_classic()+
-  theme(strip.background = element_blank(), strip.text = element_text(face = "italic", size = rel(1.1)), strip.text.y.right = element_text(angle = 0),
-        legend.text = element_text(face = "italic"),
+  theme(strip.background = element_blank(), 
+        strip.text = element_text( size = rel(1.1)), strip.text.y.right = element_text(face = "italic", angle = 0),
         plot.margin = unit(c(0,.1,.1,.1), "line"))
 
 
@@ -953,153 +948,6 @@ nit_trend <- tag_facet(nit_trend, tag_pool =  letters[-(1:6)])
 fig1 <-   ag_trend + urb_trend + nit_trend + plot_layout(ncol = 3, guides = "collect") 
 ggsave(fig1, file = "Figure_2.png", width = 10, height = 8)
 
-#########################################################################################################################
-######################################### plotting predictions w/o year effects, w/ TIN #########################
-###########################################################################################################################
-
-
-min_ag<- min(data$PercentAg)
-mean_ag <- mean(data$PercentAg)
-max_ag <- max(data$PercentAg)
-
-min_urb<- min(data$PercentUrban)
-mean_urb <- mean(data$PercentUrban)
-max_urb<- max(data$PercentUrban)
-
-min_no3<- min(data$NO3_mean)
-mean_no3 <- mean(data$NO3_mean)
-max_no3<- max(data$NO3_mean)
-
-min_tin<- min(data$TIN_mean)
-mean_tin <- mean(data$TIN_mean)
-max_tin<- max(data$TIN_mean)
-
-
-preddata.1 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
-                     PercentAg = rep(seq(min_ag, max_ag, length.out = 50), times = 3),
-                     PercentUrban = mean_urb,
-                     TIN_mean = mean_tin,
-                     collector_index = 9999, scorer_index = 9999) %>% 
-  mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
-                             Spp_code == "AGPE" ~ species_names[2],
-                             Spp_code == "ELVI" ~ species_names[3]))
-preddata.2 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
-                     PercentAg = mean_ag,
-                     PercentUrban = rep(seq(min_urb, max_urb, length.out = 50), times = 3),
-                     TIN_mean = mean_tin,
-                     collector_index = 9999, scorer_index = 9999) %>% 
-  mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
-                             Spp_code == "AGPE" ~ species_names[2],
-                             Spp_code == "ELVI" ~ species_names[3]))
-
-preddata.3 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
-                     PercentAg = mean_ag,
-                     PercentUrban = mean_urb,
-                     TIN_mean = rep(seq(min_tin, max_tin, length.out = 50), times = 3),
-                     collector_index = 9999, scorer_index = 9999) %>% 
-  mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
-                             Spp_code == "AGPE" ~ species_names[2],
-                             Spp_code == "ELVI" ~ species_names[3]))
-
-ag.pred <- predict(
-  fit.tin,
-  newdata = preddata.1,
-  formula = ~ invlogit(fixed),# + collector_eval(collector_index) + scorer_eval(scorer_index)),
-  probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
-  n.samples = 100) 
-
-urb.pred <- predict(
-  fit.tin,
-  newdata = preddata.2,
-  formula = ~ invlogit(fixed),# + collector_eval(collector_index) + scorer_eval(scorer_index)),
-  probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
-  n.samples = 100) 
-
-tin.pred <- predict(
-  fit.tin,
-  newdata = preddata.3,
-  formula = ~ invlogit(fixed),# + collector_eval(collector_index) + scorer_eval(scorer_index)),
-  probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
-  n.samples = 100) 
-
-
-
-values <-  c("#b2abd2", "#5e3c99")
-
-
-ag_binned <- data %>% 
-  mutate(ag_bin = cut(PercentAg, breaks = 30)) %>% 
-  group_by(species, ag_bin) %>% 
-  summarize(mean_endo = mean(Endo_status_liberal),
-            mean_ag = mean(PercentAg),
-            sample = n())
-
-urb_binned <- data %>% 
-  mutate(urb_bin = cut(PercentUrban, breaks = 30)) %>% 
-  group_by(species, urb_bin) %>% 
-  summarize(mean_endo = mean(Endo_status_liberal),
-            mean_urb = mean(PercentUrban),
-            sample = n())
-
-tin_binned <- data %>% 
-  mutate(tin_bin = cut(TIN_mean, breaks = 30)) %>% 
-  group_by(species, tin_bin) %>% 
-  summarize(mean_endo = mean(Endo_status_liberal),
-            mean_tin = mean(TIN_mean),
-            sample = n())
-
-ag_trend <- ggplot(ag.pred) +
-  geom_line(aes(PercentAg, mean)) +
-  geom_ribbon(aes(PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#B38600") +
-  geom_ribbon(aes(PercentAg, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
-  geom_point(data = ag_binned, aes(x = mean_ag, y = mean_endo, size = sample), color = "black", shape = 21)+
-  scale_size_continuous(limits=c(1,260))+
-  facet_wrap(~species,  ncol = 1, scales = "free_x", strip.position="right")+  
-  labs(y = "Endophyte Prevalence", x = "Percent Ag. (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
-  theme_classic()+
-  theme(strip.background = element_blank(),
-        strip.text = element_blank(),
-        legend.text = element_text(face = "italic"),
-        plot.margin = unit(c(0,.1,.1,.1), "line"))+
-  lims(y = c(0,1), x = c(0, 100))
-
-urb_trend <- ggplot(urb.pred) +
-  geom_line(aes(PercentUrban, mean)) +
-  geom_ribbon(aes(PercentUrban, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#021475") +
-  geom_ribbon(aes(PercentUrban, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
-  geom_point(data = urb_binned, aes(x = mean_urb, y = mean_endo, size = sample), color = "black", shape = 21)+
-  scale_size_continuous(limits=c(1,260))+
-  facet_wrap(~species, ncol = 1, scales = "free_x", strip.position="right")+  
-  labs(y = "Endophyte Prevalence", x = "Percent Urban (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
-  theme_classic()+
-  theme(strip.background = element_blank(),
-        strip.text = element_blank(),
-        legend.text = element_text(face = "italic"),
-        plot.margin = unit(c(0,.1,.1,.1), "line"))+
-  lims(y = c(0,1))
-
-
-tin_trend <- ggplot(tin.pred) +
-  geom_line(aes(TIN_mean, mean)) +
-  geom_ribbon(aes(TIN_mean, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#BF00A0") +
-  geom_ribbon(aes(TIN_mean, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
-  geom_point(data = tin_binned, aes(x = mean_tin, y = mean_endo, size = sample), color = "black", shape = 21)+
-  scale_size_continuous(limits=c(1,260))+
-  facet_wrap(~species, ncol = 1, scales = "free_x", strip.position="right")+  
-  labs(y = "Endophyte Prevalence", x = "Total Nitrogen Deposition (kg N/km^2)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
-  theme_classic()+
-  theme(strip.background = element_blank(), strip.text = element_text(face = "italic", size = rel(1.1)), strip.text.y.right = element_text(angle = 0),
-        legend.text = element_text(face = "italic"),
-        plot.margin = unit(c(0,.1,.1,.1), "line"))+
-  lims(y = c(0,1))
-
-
-
-ag_trend <- tag_facet(ag_trend)
-urb_trend <- tag_facet(urb_trend, tag_pool =  letters[-(1:3)])
-tin_trend <- tag_facet(tin_trend, tag_pool =  letters[-(1:6)])
-fig1 <-   ag_trend + urb_trend + tin_trend + plot_layout(ncol = 3, guides = "collect") 
-ggsave(fig1, file = "Figure_1_TIN.png", width = 10, height = 8)
 
 
 ################################################################################################################################
@@ -1141,12 +989,21 @@ effects_df <- posteriors_df %>%
   pivot_longer( cols = -c(iteration), names_to = "param") %>% 
   mutate(model = "No Year") %>% 
   mutate(spp_label = sub(".*\\.", "", param),
-         param_label = sub("\\..*","", param))
+         param_label = sub("\\..*","", param)) %>% 
+  mutate(param_f = factor(case_when(param_label == "INT" ~ "Intercept",
+                             param_label == "AG" ~ "Agric. Cover",
+                             param_label == "URB" ~ "Urban Cover",
+                             param_label == "NIT" ~ "Nit. Dep."), levels = c("Intercept", "Agric. Cover", "Urban Cover", "Nit. Dep.")),
+         spp_f = factor(case_when(spp_label == "ELVI" ~ "E. virginicus", spp_label == "AGPE" ~ "A. perennans", spp_label == "AGHY" ~ "A. hyemalis"),
+                        levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus")))
+         )
+  
+                             
 
 
 
 posterior_hist <- ggplot(effects_df)+
-  stat_halfeye(aes(x = value, y = spp_label, fill  = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
+  stat_halfeye(aes(x = value, y = spp_f, fill  = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
   
   # stat_halfeye(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
   # stat_histinterval(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, alpha = .6)+
@@ -1154,14 +1011,16 @@ posterior_hist <- ggplot(effects_df)+
   # geom_linerange(data = posteriors_summary, aes(xmin = lwr, xmax = upr, y = spp_label, color = spp_label))+
   
   geom_vline(xintercept = 0)+
-  facet_wrap(~param_label, scales = "free")+
+  facet_wrap(~param_f, scales = "free_x")+
+  labs(x = "Posterior Est.", y = "Species")+
+  guides(fill = "none")+
   scale_color_manual(values = species_colors)+
   scale_fill_manual(values = species_colors)+
   scale_x_continuous(labels = scales::label_number(), guide = guide_axis(check.overlap = TRUE))+
-  theme_bw()
+  theme_bw() + theme(axis.text.y = element_text(face = "italic"))
 
 posterior_hist
-ggsave(posterior_hist, filename = "posterior_hist_without_year_intxn.png", width = 10, height = 10)
+ggsave(posterior_hist, filename = "posterior_hist_without_year_intxn.png", width = 6, height = 6)
 
 
 
@@ -1171,7 +1030,8 @@ effects_summary <- effects_df %>%
   summarize(mean = mean(value), 
             lwr = quantile(value, .025),
             upr = quantile(value, .975),
-            prob_pos = sum(value>0)/500)
+            prob_pos = sum(value>0)/500,
+            prob_neg = 1-prob_pos)
 write.csv(effects_summary, file = "Posterior_prob_results.csv")
 
 ################################################################################################################################
