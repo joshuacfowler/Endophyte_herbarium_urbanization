@@ -618,10 +618,16 @@ pc_prec <- list(prior = "pcprec", param = c(1, 0.1))
 #   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
 #   space_int(coords, model = spde) 
 # 
-s_components.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*NO3_mean, model = "fixed")+
+# s_components.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*NO3_mean, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+
+s_components.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*std_TIN + Spp_code*std_year*std_ag + Spp_code*std_year*std_urb, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
+
 
 
 # s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*NO3_mean, model = "fixed")+
@@ -792,7 +798,7 @@ fit.4$dic$dic
 fit.5$dic$dic
 
 
-fit.1$mode$mode.status # a 0 or low value indicates "convergence"
+fit.3$mode$mode.status # a 0 or low value indicates "convergence"
 fit.4$mode$mode.status # a 0 or low value indicates "convergence"
 
 fit.1$summary.fixed
@@ -1042,19 +1048,19 @@ write.csv(effects_summary, file = "Posterior_prob_results.csv")
 
 validation.pred <- predict(
   fit.4,
-  newdata = endo_herb,
+  newdata = data,
   formula = ~ invlogit(fixed + scorer + collector + space_int),
-  n.samples = 100) 
+  n.samples = 500) 
 
 
-rocobj <- pROC::roc(endo_herb$Endo_status_liberal, validation.pred$mean)
+rocobj <- pROC::roc(data$Endo_status_liberal, validation.pred$mean)
 
 ROC_training_plot <- ggroc(rocobj) 
 ggsave(ROC_training_plot, filename = "ROC_training_plot.png", width = 4, height = 4)
 
 # AUC values
 rocobj$auc
-# 0.7892
+# 0.8064
 
 
 
@@ -1066,34 +1072,40 @@ summary_data <- data %>%
   group_by(Spp_code) %>% 
   summarize(min_year = min(std_year),
             max_year = max(std_year),
-            min_nit = quantile(NO3_mean, .05),
-            max_nit = quantile(NO3_mean, .95),
-            mean_nit = mean(NO3_mean))
+            min_nit = quantile(std_TIN, .05),
+            max_nit = quantile(std_TIN, .95),
+            mean_nit = mean(std_TIN))
 
 preddata_aghy <- expand.grid(Spp_code = c("AGHY"), 
                              std_year = seq(summary_data[summary_data$Spp_code == "AGHY",]$min_year, summary_data[summary_data$Spp_code == "AGHY",]$max_year, length.out = 20), 
-                             NO3_mean = c(summary_data[summary_data$Spp_code == "AGHY",]$min_nit, summary_data[summary_data$Spp_code == "AGHY",]$max_nit))
+                             std_TIN = c(summary_data[summary_data$Spp_code == "AGHY",]$min_nit, summary_data[summary_data$Spp_code == "AGHY",]$max_nit),
+                             std_ag = 0,
+                             std_urb = 0)
 preddata_agpe <- expand.grid(Spp_code = c("AGPE"), 
                              std_year = seq(summary_data[summary_data$Spp_code == "AGPE",]$min_year, summary_data[summary_data$Spp_code == "AGPE",]$max_year, length.out = 20), 
-                             NO3_mean = c(summary_data[summary_data$Spp_code == "AGPE",]$min_nit, summary_data[summary_data$Spp_code == "AGPE",]$max_nit))
+                             std_TIN = c(summary_data[summary_data$Spp_code == "AGPE",]$min_nit, summary_data[summary_data$Spp_code == "AGPE",]$max_nit),
+                             std_ag = 0,
+                             std_urb = 0)
 preddata_elvi <- expand.grid(Spp_code = c("ELVI"), 
                              std_year = seq(summary_data[summary_data$Spp_code == "ELVI",]$min_year, summary_data[summary_data$Spp_code == "ELVI",]$max_year, length.out = 20), 
-                             NO3_mean = c(summary_data[summary_data$Spp_code == "ELVI",]$min_nit, summary_data[summary_data$Spp_code == "ELVI",]$max_nit))
+                             std_TIN = c(summary_data[summary_data$Spp_code == "ELVI",]$min_nit, summary_data[summary_data$Spp_code == "ELVI",]$max_nit),
+                             std_ag = 0,
+                             std_urb = 0)
 
 preddata <- bind_rows(preddata_aghy, preddata_agpe, preddata_elvi) %>% 
   mutate(collector_index = 9999, scorer_index = 9999,
          species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
                              Spp_code == "ELVI" ~ species_names[3]),
-         nit_label = case_when(NO3_mean > mean(NO3_mean) ~ "High Nitrogen",
-                               NO3_mean < mean(NO3_mean) ~ "Low Nitrogen"))
+         nit_label = case_when(std_TIN > 0 ~ "High Nitrogen",
+                               std_TIN < 0 ~ "Low Nitrogen"))
 
 
 # gennerating predictions and back-transforming the standardized year variable
 
 
 
-year.pred <- predict(
+year.nit.pred <- predict(
   fit.3,
   newdata = preddata,
   formula = ~ invlogit(fixed),#+ collector_eval(collector_index) + scorer_eval(scorer_index)),
@@ -1104,15 +1116,15 @@ year.pred <- predict(
 
 # binning the data for plotting
 endo_herb_binned <- endo_herb %>%
-  mutate(binned_nit = cut(NO3_mean, breaks = 2),
-         binned_year = cut(year, breaks = 40)) %>%
+  mutate(binned_nit = cut(std_TIN, breaks = 2),
+         binned_year = cut(year, breaks = 50)) %>%
   group_by(Spp_code, species,binned_nit, binned_year) %>%
-  summarise(mean_nit = mean(NO3_mean),
+  summarise(mean_nit = mean(std_TIN),
             mean_year = mean(year),
             mean_endo = mean(Endo_status_liberal),
             sample = n()) %>%
-  mutate(nit_bin = case_when(mean_nit>=17.6~ "High Nitrogen",
-                            mean_nit<17.6 ~ "Low Nitrogen"))
+  mutate(nit_bin = case_when(mean_nit>=0~ "High Nitrogen",
+                            mean_nit<0 ~ "Low Nitrogen"))
 
 
 
@@ -1124,13 +1136,15 @@ endo_herb_binned <- endo_herb %>%
 #   mutate(nit_label = case_when(NO3_mean > mean(NO3_mean) ~ "High Nitrogen",
 #                                        NO3_mean < mean(NO3_mean) ~ "Low Nitrogen"))
 
-nit_yr_trend <- ggplot(year.pred)+
+nit_yr_trend <- ggplot(year.nit.pred)+
   geom_ribbon(aes(year, ymin = q0.025, ymax = q0.975, group = nit_label, fill = nit_label), alpha = 0.3) +
   geom_ribbon(aes(year, ymin = q0.25, ymax = q0.75, group = nit_label, fill = nit_label), alpha = 0.3) +
   geom_line(aes(year, mean, group = nit_label), color = "black") +
   geom_point(data = endo_herb_binned, aes(x = mean_year, y = mean_endo, fill = nit_bin, size = sample), shape = 21, alpha = .6)+
-  facet_wrap(~species, nrow = 3, scales = "free")+
-  guides(color = "none")+
+  facet_wrap(~species, nrow = 3, scales = "free", strip.position="right")+
+  guides(color = "none",
+         fill = guide_legend(title.position="top", title.hjust = 0.5, order = 1),
+         size = guide_legend(title.position="top", title.hjust = 0.5, order = 2))+
   scale_color_manual(values = c("High Nitrogen" = "#BF00A0",
                                "Low Nitrogen"="darkgray"))+
   scale_fill_manual(values = c("High Nitrogen" = "#BF00A0",
@@ -1138,13 +1152,246 @@ nit_yr_trend <- ggplot(year.pred)+
   labs(y = "Endophyte Prevalence", x = "Year", size = "Sample Size", fill = "Nitrogen Deposition")+
   theme_classic()+
   theme(strip.background = element_blank(),
-        legend.text = element_text(face = "italic"),
-        strip.text = element_text(face = "italic", size = rel(1.1)), strip.text.y.right = element_text(angle = 0),
-        plot.margin = unit(c(0,.1,.1,.1), "line"))+
+        strip.text = element_text( size = rel(1.1)), strip.text.y.right = element_text(face = "italic",angle = 0),
+        plot.margin = unit(c(0,.1,.1,.1), "line"),
+        legend.position = "bottom", legend.box = "vertical")+
   lims(y = c(0,1), x = c(1832, 2020))
 
-nit_yr_trend
-ggsave(nit_yr_trend, filename = "Nitrogen_and_Year.png", width = 6, height = 8)
+# nit_yr_trend
+# ggsave(nit_yr_trend, filename = "Nitrogen_and_Year.png", width = 6, height = 8)
+
+
+
+
+################################################################################################################################
+##########  Getting and plotting prediction from AgXYear ###############
+################################################################################################################################
+mean_year <- mean(data$year)
+summary_data <- data %>% 
+  group_by(Spp_code) %>% 
+  summarize(min_year = min(std_year),
+            max_year = max(std_year),
+            min_ag = quantile(std_ag, .05),
+            max_ag = quantile(std_ag, .95),
+            mean_ag = mean(std_ag))
+
+preddata_aghy <- expand.grid(Spp_code = c("AGHY"), 
+                             std_year = seq(summary_data[summary_data$Spp_code == "AGHY",]$min_year, summary_data[summary_data$Spp_code == "AGHY",]$max_year, length.out = 20), 
+                             std_TIN = 0,
+                             std_ag = c(summary_data[summary_data$Spp_code == "AGHY",]$min_ag, summary_data[summary_data$Spp_code == "AGHY",]$max_ag),
+                             std_urb = 0)
+preddata_agpe <- expand.grid(Spp_code = c("AGPE"), 
+                             std_year = seq(summary_data[summary_data$Spp_code == "AGPE",]$min_year, summary_data[summary_data$Spp_code == "AGPE",]$max_year, length.out = 20), 
+                             std_TIN = 0,
+                             std_ag = c(summary_data[summary_data$Spp_code == "AGPE",]$min_ag, summary_data[summary_data$Spp_code == "AGPE",]$max_ag),
+                             std_urb = 0)
+preddata_elvi <- expand.grid(Spp_code = c("ELVI"), 
+                             std_year = seq(summary_data[summary_data$Spp_code == "ELVI",]$min_year, summary_data[summary_data$Spp_code == "ELVI",]$max_year, length.out = 20), 
+                             std_TIN = 0,
+                             std_ag = c(summary_data[summary_data$Spp_code == "ELVI",]$min_ag, summary_data[summary_data$Spp_code == "ELVI",]$max_ag),
+                             std_urb = 0)
+
+preddata <- bind_rows(preddata_aghy, preddata_agpe, preddata_elvi) %>% 
+  mutate(collector_index = 9999, scorer_index = 9999,
+         species = case_when(Spp_code == "AGHY" ~ species_names[1],
+                             Spp_code == "AGPE" ~ species_names[2],
+                             Spp_code == "ELVI" ~ species_names[3]),
+         ag_label = case_when(std_ag >=0 ~ "High Agr. Cover",
+                               std_ag < 0 ~ "Low Agr. Cover"))
+
+
+# gennerating predictions and back-transforming the standardized year variable
+
+
+
+year.ag.pred <- predict(
+  fit.3,
+  newdata = preddata,
+  formula = ~ invlogit(fixed),#+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
+  n.samples = 100) %>% 
+  mutate(year = std_year + mean_year)
+
+
+# binning the data for plotting
+endo_herb_binned <- endo_herb %>%
+  mutate(binned_ag = cut(std_ag, breaks = 2),
+         binned_year = cut(year, breaks = 50)) %>% 
+  group_by(Spp_code, species,binned_ag, binned_year) %>%
+  summarise(mean_ag = mean(std_ag),
+            mean_year = mean(year),
+            mean_endo = mean(Endo_status_liberal),
+            sample = n()) %>%
+  mutate(ag_bin = case_when(mean_ag>=0~ "High Agr. Cover",
+                            mean_ag<0 ~ "Low Agr. Cover"))
+
+
+
+
+# histogram_data <- endo_herb%>%
+#   mutate(disturbance_label = case_when(NO3_mean > mean(NO3_mean) ~ "Nitrogen",
+#                                     NO3_mean < mean(NO3_mean) ~ "Undisturbed"))
+# histogram_data2 <- endo_herb%>%
+#   mutate(nit_label = case_when(NO3_mean > mean(NO3_mean) ~ "High Nitrogen",
+#                                        NO3_mean < mean(NO3_mean) ~ "Low Nitrogen"))
+
+ag_yr_trend <- ggplot(year.ag.pred)+
+  geom_ribbon(aes(year, ymin = q0.025, ymax = q0.975, group = ag_label, fill = ag_label), alpha = 0.3) +
+  geom_ribbon(aes(year, ymin = q0.25, ymax = q0.75, group = ag_label, fill = ag_label), alpha = 0.3) +
+  geom_line(aes(year, mean, group = ag_label), color = "black") +
+  geom_point(data = endo_herb_binned, aes(x = mean_year, y = mean_endo, fill = ag_bin, size = sample), shape = 21, alpha = .6)+
+  facet_wrap(~species, nrow = 3, scales = "free")+
+  guides(color = "none",
+    fill = guide_legend(title.position="top", title.hjust = 0.5, order = 1),
+    size = guide_legend(title.position="top", title.hjust = 0.5, order = 2))+
+  scale_color_manual(values = c("High Agr. Cover" = "#B38600",
+                                "Low Agr. Cover"="darkgray"))+
+  scale_fill_manual(values = c("High Agr. Cover" = "#B38600",
+                               "Low Agr. Cover"="darkgray"))+
+  labs(y = "Endophyte Prevalence", x = "Year", size = "Sample Size", fill = "Agr. Cover (%)")+
+  theme_classic()+
+  theme(strip.background = element_blank(),
+        strip.text = element_blank(),
+        plot.margin = unit(c(0,.1,.1,.1), "line"),
+        legend.position = "bottom", legend.box = "vertical")+
+  lims(y = c(0,1), x = c(1832, 2020))
+
+# ag_yr_trend
+# ggsave(ag_yr_trend, filename = "Agriculture_and_Year.png", width = 6, height = 8)
+
+
+
+
+
+################################################################################################################################
+##########  Getting and plotting prediction from UrbXYear ###############
+################################################################################################################################
+mean_year <- mean(data$year)
+summary_data <- data %>% 
+  group_by(Spp_code) %>% 
+  summarize(min_year = min(std_year),
+            max_year = max(std_year),
+            min_urb = quantile(std_urb, .05),
+            max_urb = quantile(std_urb, .95),
+            mean_urb = mean(std_urb))
+
+preddata_aghy <- expand.grid(Spp_code = c("AGHY"), 
+                             std_year = seq(summary_data[summary_data$Spp_code == "AGHY",]$min_year, summary_data[summary_data$Spp_code == "AGHY",]$max_year, length.out = 20), 
+                             std_TIN = 0,
+                             std_ag = 0,
+                             std_urb = c(summary_data[summary_data$Spp_code == "AGHY",]$min_urb, summary_data[summary_data$Spp_code == "AGHY",]$max_urb))
+preddata_agpe <- expand.grid(Spp_code = c("AGPE"), 
+                             std_year = seq(summary_data[summary_data$Spp_code == "AGPE",]$min_year, summary_data[summary_data$Spp_code == "AGPE",]$max_year, length.out = 20), 
+                             std_TIN = 0,
+                             std_ag = 0,
+                             std_urb = c(summary_data[summary_data$Spp_code == "AGPE",]$min_urb, summary_data[summary_data$Spp_code == "AGPE",]$max_urb))
+preddata_elvi <- expand.grid(Spp_code = c("ELVI"), 
+                             std_year = seq(summary_data[summary_data$Spp_code == "ELVI",]$min_year, summary_data[summary_data$Spp_code == "ELVI",]$max_year, length.out = 20), 
+                             std_TIN = 0,
+                             std_ag = 0,
+                             std_urb = c(summary_data[summary_data$Spp_code == "ELVI",]$min_urb, summary_data[summary_data$Spp_code == "ELVI",]$max_urb))
+
+preddata <- bind_rows(preddata_aghy, preddata_agpe, preddata_elvi) %>% 
+  mutate(collector_index = 9999, scorer_index = 9999,
+         species = case_when(Spp_code == "AGHY" ~ species_names[1],
+                             Spp_code == "AGPE" ~ species_names[2],
+                             Spp_code == "ELVI" ~ species_names[3]),
+         urb_label = case_when(std_urb >=0 ~ "High Urb. Cover",
+                              std_urb < 0 ~ "Low Urb. Cover"))
+
+
+# gennerating predictions and back-transforming the standardized year variable
+
+
+
+year.urb.pred <- predict(
+  fit.3,
+  newdata = preddata,
+  formula = ~ invlogit(fixed),#+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
+  n.samples = 100) %>% 
+  mutate(year = std_year + mean_year)
+
+
+# binning the data for plotting
+endo_herb_binned <- endo_herb %>%
+  mutate(binned_ag = cut(std_urb, breaks = 2),
+         binned_year = cut(year, breaks = 50)) %>% 
+  group_by(Spp_code, species,binned_ag, binned_year) %>%
+  summarise(mean_urb = mean(std_urb),
+            mean_year = mean(year),
+            mean_endo = mean(Endo_status_liberal),
+            sample = n()) %>%
+  mutate(urb_bin =  case_when(mean_urb >=0 ~ "High Urb. Cover",
+                             mean_urb < 0 ~ "Low Urb. Cover"))
+
+
+
+
+# histogram_data <- endo_herb%>%
+#   mutate(disturbance_label = case_when(NO3_mean > mean(NO3_mean) ~ "Nitrogen",
+#                                     NO3_mean < mean(NO3_mean) ~ "Undisturbed"))
+# histogram_data2 <- endo_herb%>%
+#   mutate(nit_label = case_when(NO3_mean > mean(NO3_mean) ~ "High Nitrogen",
+#                                        NO3_mean < mean(NO3_mean) ~ "Low Nitrogen"))
+
+urb_yr_trend <- ggplot(year.urb.pred)+
+  geom_ribbon(aes(year, ymin = q0.025, ymax = q0.975, group = urb_label, fill = urb_label), alpha = 0.3) +
+  geom_ribbon(aes(year, ymin = q0.25, ymax = q0.75, group = urb_label, fill = urb_label), alpha = 0.3) +
+  geom_line(aes(year, mean, group = urb_label), color = "black") +
+  geom_point(data = endo_herb_binned, aes(x = mean_year, y = mean_endo, fill = urb_bin, size = sample), shape = 21, alpha = .6)+
+  facet_wrap(~species, nrow = 3, scales = "free")+
+  guides(color = "none",
+         fill = guide_legend(title.position="top", title.hjust = 0.5, order = 1),
+         size = guide_legend(title.position="top", title.hjust = 0.5, order = 2))+
+  scale_color_manual(values = c("High Urb. Cover" = "#021475",
+                                "Low Urb. Cover"="darkgray"))+
+  scale_fill_manual(values = c("High Urb. Cover" = "#021475",
+                               "Low Urb. Cover"="darkgray"))+
+  labs(y = "Endophyte Prevalence", x = "Year", size = "Sample Size", fill = "Urb. Cover (%)")+
+  theme_classic()+
+  theme(strip.background = element_blank(),
+        strip.text = element_blank(),
+        plot.margin = unit(c(0,.1,.1,.1), "line"),
+        legend.position = "bottom", legend.box = "vertical")+
+  lims(y = c(0,1), x = c(1832, 2020))
+
+# urb_yr_trend
+# ggsave(urb_yr_trend, filename = "Urban_and_Year.png", width = 6, height = 8)
+
+
+
+###### Plotting all three driver X year plots together #####
+
+ag_yr_trend <- tag_facet(ag_yr_trend)
+urb_yr_trend <- tag_facet(urb_yr_trend, tag_pool =  letters[-(1:3)])
+nit_yr_trend <- tag_facet(nit_yr_trend, tag_pool =  letters[-(1:6)])
+yr_trend_plot <- ag_yr_trend + urb_yr_trend + nit_yr_trend + plot_layout(ncol = 3) 
+
+
+# yr_trend_plot
+
+ggsave(yr_trend_plot, filename = "yr_trend_plot.png", width = 10, height = 8)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ################################################################################################################################
