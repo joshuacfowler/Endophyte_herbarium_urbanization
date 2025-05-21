@@ -1,6 +1,6 @@
 # Purpose: Fits spatial model of change in Epichloe endophyte prevalence in herbarium specimens and assesses effect of different anthropogenic land-use on trends.
 # Authors: Mallory Tucker and Joshua Fowler
-# Updated: Feb 13, 2024
+# Updated: May 21, 2025
 
 library(devtools)
 # library("devtools")
