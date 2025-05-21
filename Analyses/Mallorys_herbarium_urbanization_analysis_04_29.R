@@ -394,6 +394,9 @@ sum(just_agpe$Endo_status_liberal == just_agpe$Endo_status_conservative)/nrow(ju
 unique_localities <- paste0(endo_herb$State, endo_herb$County)
 length(unique(unique_localities))
 
+# how many seeds total?
+sum(endo_herb$seed_scored, na.rm = T)
+
 #########################################################################################
 ################################# urb and ag max and min percentages, N ####################
 #########################################################################################
@@ -1360,8 +1363,8 @@ urb_yr_trend <- ggplot(year.urb.pred)+
 # ggsave(urb_yr_trend, filename = "Urban_and_Year.png", width = 6, height = 8)
 
 
-
-###### Plotting all three driver X year plots together #####
+##########
+##### Plotting all three driver X year plots together #####
 
 ag_yr_trend <- tag_facet(ag_yr_trend)
 urb_yr_trend <- tag_facet(urb_yr_trend, tag_pool =  letters[-(1:3)])
@@ -1372,6 +1375,168 @@ yr_trend_plot <- ag_yr_trend + urb_yr_trend + nit_yr_trend + plot_layout(ncol = 
 # yr_trend_plot
 
 ggsave(yr_trend_plot, filename = "yr_trend_plot.png", width = 10, height = 8)
+
+
+
+
+
+################################################################################################################################
+##########  Plotting the posteriors from NitXYear model ###############
+################################################################################################################################
+
+
+param_names <- fit.3$summary.random$fixed$ID
+
+n_draws <- 500
+
+posteriors <- generate(
+  fit.3,
+  formula = ~ fixed_latent,
+  n.samples = n_draws) 
+rownames(posteriors) <- param_names
+colnames(posteriors) <- c( paste0("iter",1:n_draws))
+
+posteriors_df <- as_tibble(t(posteriors), rownames = "iteration")
+
+# Calculate the effects of the predictor, given that the reference level is for AGHY
+effects_df <- posteriors_df %>% 
+  mutate(NIT.AGHY = std_TIN,
+         NIT.AGPE = std_TIN+`Spp_codeAGPE:std_TIN`,
+         NIT.ELVI = std_TIN+`Spp_codeELVI:std_TIN`,
+         URB.AGHY = std_urb,
+         URB.AGPE = std_urb+`Spp_codeAGPE:std_urb`,
+         URB.ELVI = std_urb+`Spp_codeELVI:std_urb`,
+         AG.AGHY = std_ag,
+         AG.AGPE = std_ag+`Spp_codeAGPE:std_urb`,
+         AG.ELVI = std_ag+`Spp_codeELVI:std_urb`,
+         YEAR.AGHY = std_year,
+         YEAR.AGPE = std_year+`Spp_codeAGPE:std_year`,
+         YEAR.ELVI = std_year+`Spp_codeELVI:std_year`,
+         YEARxNIT.AGHY = `std_year:std_TIN`,
+         YEARxNIT.AGPE = `std_year:std_TIN`+`Spp_codeAGPE:std_year:std_TIN`,
+         YEARxNIT.ELVI = `std_year:std_TIN`+`Spp_codeELVI:std_year:std_TIN`,
+         YEARxURB.AGHY = `std_year:std_urb`,
+         YEARxURB.AGPE = `std_year:std_urb`+`Spp_codeAGPE:std_year:std_urb`,
+         YEARxURB.ELVI = `std_year:std_urb`+`Spp_codeELVI:std_year:std_urb`,
+         YEARxAG.AGHY = `std_year:std_ag`,
+         YEARxAG.AGPE = `std_year:std_ag`+`Spp_codeAGPE:std_year:std_ag`,
+         YEARxAG.ELVI = `std_year:std_ag`+`Spp_codeELVI:std_year:std_ag`,
+         INT.AGHY = Spp_codeAGHY,
+         INT.AGPE = Spp_codeAGPE,
+         INT.ELVI = Spp_codeELVI) %>% 
+  select(-all_of(param_names)) %>% 
+  pivot_longer( cols = -c(iteration), names_to = "param") %>% 
+  mutate(model = "Temporal") %>% 
+  mutate(spp_label = sub(".*\\.", "", param),
+         param_label = sub("\\..*","", param)) %>% 
+  mutate(param_f = factor(case_when(param_label == "INT" ~ "Intercept",
+                                    param_label == "AG" ~ "Agric. Cover",
+                                    param_label == "URB" ~ "Urban Cover",
+                                    param_label == "NIT" ~ "Nit. Dep.",
+                                    param_label == "YEAR" ~ "Year", 
+                                    param_label == "YEARxNIT" ~ "Year x Nit.", 
+                                    param_label == "YEARxURB" ~ "Year x Urb.",
+                                    param_label == "YEARxAG" ~ "Year x Agric."), levels = c("Intercept", "Agric. Cover", "Urban Cover", "Nit. Dep.", "Year",
+                                                                                            "Year x Agric.", "Year x Urb.", "Year x Nit.")),
+         spp_f = factor(case_when(spp_label == "ELVI" ~ "E. virginicus", spp_label == "AGPE" ~ "A. perennans", spp_label == "AGHY" ~ "A. hyemalis"),
+                        levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus")))
+  )
+
+
+
+posterior_hist <- ggplot(effects_df)+
+  stat_halfeye(aes(x = value, y = spp_f, fill = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
+  # stat_histinterval(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, alpha = .6)+
+  # geom_point(data = posteriors_summary, aes(x = mean, y = spp_label, color = spp_label))+
+  # geom_linerange(data = posteriors_summary, aes(xmin = lwr, xmax = upr, y = spp_label, color = spp_label))+
+  
+  geom_vline(xintercept = 0)+
+  facet_wrap(~param_f, scales = "free_x", nrow = 2)+
+  scale_color_manual(values = species_colors)+
+  scale_fill_manual(values = species_colors)+
+  labs(x = "Posterior Est.", y = "Species")+
+  guides(fill = "none")+
+  scale_x_continuous(labels = scales::label_number(), guide = guide_axis(check.overlap = TRUE))+
+  theme_bw() + theme(axis.text.y = element_text(face = "italic"))
+
+posterior_hist
+ggsave(posterior_hist, filename = "posterior_hist_with_year.png", width = 8, height = 7)
+
+
+
+effects_summary <- effects_df %>% 
+  group_by(param, param_label, spp_label) %>% 
+  summarize(mean = mean(value), 
+            lwr = quantile(value, .025),
+            upr = quantile(value, .975),
+            prob_pos = sum(value>0)/500,
+            prob_neg = sum(value<0)/500)
+
+
+# trying to get an estimate of what is the difference in slope between the two plotted prediction lines for high and low nitrogen
+
+
+posteriors_trend <- generate(
+  fit.3,
+  newdata = preddata,
+  formula = ~ fixed,
+  n.samples = n_draws) 
+colnames(posteriors_trend) <- c( paste0("iter",1:n_draws))
+
+posteriors_trend_df <- preddata %>% bind_cols(as_tibble(posteriors_trend)) %>% 
+  pivot_longer(cols = contains("iter"), names_to = "iteration") %>% 
+  mutate(year = std_year + mean_year)
+
+
+
+
+ggplot(data = posteriors_trend_df)+
+  geom_line(aes(x = year, y = value, color = nit_label, group = interaction(nit_label, iteration)))+
+  facet_wrap(~Spp_code)
+
+posteriors_trend_summary <- posteriors_trend_df %>% 
+  group_by(Spp_code, nit_label, iteration) %>% 
+  filter(year == min(year) | year == max(year)) %>% 
+  mutate(year_label = case_when(year == min(year)~"start",
+                                year == max(year)~"end")) %>% select(-year, -std_year) %>% 
+  pivot_wider(names_from = year_label, values_from = value) %>% 
+  mutate(slope = end-start) 
+
+ggplot(data = posteriors_trend_summary)+
+  geom_histogram(aes(x = slope, fill = nit_label))+
+  facet_wrap(~Spp_code)
+
+prob_superior <- posteriors_trend_summary %>% 
+  select(-start, -end, -NO3_mean) %>% 
+  pivot_wider(names_from = nit_label, names_glue = "slope_{nit_label}", values_from = slope) %>% 
+  mutate(slope_diff = `slope_High Nitrogen` - `slope_Low Nitrogen`) %>% 
+  group_by(Spp_code) %>% 
+  summarize(mean = mean(slope_diff), 
+            lwr = quantile(slope_diff, .025),
+            upr = quantile(slope_diff, .975),
+            prob_pos = sum(slope_diff>0)/500,
+            prob_neg = sum(slope_diff<0)/500)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1505,6 +1670,26 @@ ggsave(tin_yr_trend, filename = "Total_Inorganic_Nitrogen_and_Year.png", width =
 # 
 # ggsave(year_trend_facet, filename = "year_trend_facet_N.png", width = 10, height = 10)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ################################################################################################################################
 ##########  Getting and plotting prediction from NitXYear w/NH4 ###############
 ################################################################################################################################
@@ -1593,121 +1778,6 @@ nh4_yr_trend <- ggplot(year.pred)+
 
 nh4_yr_trend
 ggsave(nh4_yr_trend, filename = "NH4_and_Year.png", width = 6, height = 8)
-
-################################################################################################################################
-##########  Plotting the posteriors from NitXYear model ###############
-################################################################################################################################
-
-
-param_names <- fit.3$summary.random$fixed$ID
-
-n_draws <- 500
-
-posteriors <- generate(
-  fit.3,
-  formula = ~ fixed_latent,
-  n.samples = n_draws) 
-rownames(posteriors) <- param_names
-colnames(posteriors) <- c( paste0("iter",1:n_draws))
-
-posteriors_df <- as_tibble(t(posteriors), rownames = "iteration")
-
-# Calculate the effects of the predictor, given that the reference level is for AGHY
-effects_df <- posteriors_df %>% 
-  mutate(NIT.AGHY = NO3_mean,
-         NIT.AGPE = NO3_mean+`Spp_codeAGPE:NO3_mean`,
-         NIT.ELVI = NO3_mean+`Spp_codeELVI:NO3_mean`,
-         YEAR.AGHY = std_year,
-         YEAR.AGPE = std_year+`Spp_codeAGPE:std_year`,
-         YEAR.ELVI = std_year+`Spp_codeELVI:std_year`,
-         YEARxNIT.AGHY = `NO3_mean:std_year`,
-         YEARxNIT.AGPE = `NO3_mean:std_year`+`Spp_codeAGPE:NO3_mean:std_year`,
-         YEARxNIT.ELVI = `NO3_mean:std_year`+`Spp_codeELVI:NO3_mean:std_year`,
-         INT.AGHY = Spp_codeAGHY,
-         INT.AGPE = Spp_codeAGPE,
-         INT.ELVI = Spp_codeELVI) %>% 
-  select(-all_of(param_names)) %>% 
-  pivot_longer( cols = -c(iteration), names_to = "param") %>% 
-  mutate(model = "NitXYear") %>% 
-  mutate(spp_label = sub(".*\\.", "", param),
-         param_label = sub("\\..*","", param))
-
-
-posterior_hist <- ggplot(effects_df)+
-  stat_halfeye(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
-  # stat_histinterval(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, alpha = .6)+
-  # geom_point(data = posteriors_summary, aes(x = mean, y = spp_label, color = spp_label))+
-  # geom_linerange(data = posteriors_summary, aes(xmin = lwr, xmax = upr, y = spp_label, color = spp_label))+
-  
-  geom_vline(xintercept = 0)+
-  facet_wrap(~param_label, scales = "free")+
-  scale_color_manual(values = species_colors)+
-  scale_fill_manual(values = species_colors)+
-  scale_x_continuous(labels = scales::label_number(), guide = guide_axis(check.overlap = TRUE))+
-  theme_bw()
-
-posterior_hist
-ggsave(posterior_hist, filename = "posterior_hist_with_year.png")
-
-
-
-effects_summary <- effects_df %>% 
-  group_by(param, param_label, spp_label) %>% 
-  summarize(mean = mean(value), 
-            lwr = quantile(value, .025),
-            upr = quantile(value, .975),
-            prob_pos = sum(value>0)/500,
-            prob_neg = sum(value<0)/500)
-
-
-# trying to get an estimate of what is the difference in slope between the two plotted prediction lines for high and low nitrogen
-
-
-posteriors_trend <- generate(
-  fit.3,
-  newdata = preddata,
-  formula = ~ fixed,
-  n.samples = n_draws) 
-colnames(posteriors_trend) <- c( paste0("iter",1:n_draws))
-
-posteriors_trend_df <- preddata %>% bind_cols(as_tibble(posteriors_trend)) %>% 
-  pivot_longer(cols = contains("iter"), names_to = "iteration") %>% 
-  mutate(year = std_year + mean_year)
-
-  
-
-
-ggplot(data = posteriors_trend_df)+
-  geom_line(aes(x = year, y = value, color = nit_label, group = interaction(nit_label, iteration)))+
-  facet_wrap(~Spp_code)
-
-posteriors_trend_summary <- posteriors_trend_df %>% 
-  group_by(Spp_code, nit_label, iteration) %>% 
-  filter(year == min(year) | year == max(year)) %>% 
-  mutate(year_label = case_when(year == min(year)~"start",
-                                year == max(year)~"end")) %>% select(-year, -std_year) %>% 
-  pivot_wider(names_from = year_label, values_from = value) %>% 
-  mutate(slope = end-start) 
-
-ggplot(data = posteriors_trend_summary)+
-  geom_histogram(aes(x = slope, fill = nit_label))+
-  facet_wrap(~Spp_code)
-
-prob_superior <- posteriors_trend_summary %>% 
-  select(-start, -end, -NO3_mean) %>% 
-  pivot_wider(names_from = nit_label, names_glue = "slope_{nit_label}", values_from = slope) %>% 
-  mutate(slope_diff = `slope_High Nitrogen` - `slope_Low Nitrogen`) %>% 
-  group_by(Spp_code) %>% 
-  summarize(mean = mean(slope_diff), 
-            lwr = quantile(slope_diff, .025),
-            upr = quantile(slope_diff, .975),
-            prob_pos = sum(slope_diff>0)/500,
-            prob_neg = sum(slope_diff<0)/500)
-
-
-
-
-
 
 
 
