@@ -350,6 +350,13 @@ summary_endo_herb <- endo_herb %>%
             avg_seed = mean(seed_scored, na.rm = T),
             avg_month = mode(as.numeric(month)))
 
+
+# generating summary of collections
+collection_summary <- endo_herb %>% 
+  filter(score_number == 1) %>% 
+  group_by(Herb_code, Spp_code) %>% 
+  summarize(count = n())
+
 #######################################################################################
 ################################## Mean endo status by species###########################
 #######################################################################################
