@@ -396,16 +396,16 @@ fit.con <- bru(s_components,
 
 
 
-fit.10km$dic$dic
-fit.30km$dic$dic
-fit.10km.year$dic$dic
-fit.30km.year$dic$dic
+fit.lib$dic$dic
+fit.con$dic$dic
+fit.lib.year$dic$dic
+fit.con.year$dic$dic
 
 
-fit.10km$mode$mode.status # a 0 or low value indicates "convergence"
-fit.30km$mode$mode.status # a 0 or low value indicates "convergence"
-fit.10km.year$mode$mode.status # a 0 or low value indicates "convergence"
-fit.30km.year$mode$mode.status # a 0 or low value indicates "convergence"
+fit.lib$mode$mode.status # a 0 or low value indicates "convergence"
+fit.con$mode$mode.status # a 0 or low value indicates "convergence"
+fit.lib.year$mode$mode.status # a 0 or low value indicates "convergence"
+fit.con.year$mode$mode.status # a 0 or low value indicates "convergence"
 
 
 
@@ -418,29 +418,29 @@ fit.30km.year$mode$mode.status # a 0 or low value indicates "convergence"
 ##########  Plotting the prediction without year effects ###############
 ################################################################################################################################
 
-min_ag<- min(data$std_ag_30km)
+min_ag<- min(data$std_ag)
 mean_ag <- mean(data$PercentAg)
-max_ag <- max(data$std_urb_30km)
+max_ag <- max(data$std_urb)
 
-min_urb<- min(data$std_urb_30km)
+min_urb<- min(data$std_urb)
 mean_urb <- mean(data$PercentUrban)
-max_urb<- max(data$std_urb_30km)
+max_urb<- max(data$std_urb)
 
 min_nit<- min(data$TIN_mean)
 mean_nit <- mean(data$TIN_mean)
 max_nit<- max(data$TIN_mean)
 
 preddata.1 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
-                     std_ag_30km = rep(seq(min_ag, max_ag, length.out = 50), times = 3),
-                     std_urb_30km = 0,
+                     std_ag = rep(seq(min_ag, max_ag, length.out = 50), times = 3),
+                     std_urb = 0,
                      std_TIN = 0,
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
                              Spp_code == "ELVI" ~ species_names[3]))
 preddata.2 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
-                     std_ag_30km = 0,
-                     std_urb_30km = rep(seq(min_urb, max_urb, length.out = 50), times = 3),
+                     std_ag = 0,
+                     std_urb = rep(seq(min_urb, max_urb, length.out = 50), times = 3),
                      std_TIN = 0,
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
@@ -448,8 +448,8 @@ preddata.2 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50)
                              Spp_code == "ELVI" ~ species_names[3]))
 
 preddata.3 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
-                     std_ag_30km = 0,
-                     std_urb_30km = 0,
+                     std_ag = 0,
+                     std_urb = 0,
                      std_TIN = rep(seq(min_nit, max_nit, length.out = 50)-mean_nit, times = 3),
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
@@ -457,24 +457,24 @@ preddata.3 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50)
                              Spp_code == "ELVI" ~ species_names[3]))
 
 ag.pred <- predict(
-  fit.30km,
+  fit.con,
   newdata = preddata.1,
   formula = ~ invlogit(fixed),# + collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
   n.samples = 100) %>% 
-  mutate(PercentAg = std_ag_30km + mean_ag)
+  mutate(PercentAg = std_ag + mean_ag)
 
 urb.pred <- predict(
-  fit.30km,
+  fit.con,
   newdata = preddata.2,
   formula = ~ invlogit(fixed),# + collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
   n.samples = 100) %>% 
-  mutate(PercentUrb = std_urb_30km + mean_urb)
+  mutate(PercentUrb = std_urb + mean_urb)
 
 
 nit.pred <- predict(
-  fit.30km,
+  fit.con,
   newdata = preddata.3,
   formula = ~ invlogit(fixed),# + collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
@@ -489,21 +489,21 @@ values <-  c("#b2abd2", "#5e3c99")
 ag_binned <- data %>% 
   mutate(ag_bin = cut(PercentAg, breaks = 30)) %>% 
   group_by(species, ag_bin) %>% 
-  summarize(mean_endo = mean(Endo_status_liberal),
+  summarize(mean_endo = mean(Endo_status_conservative),
             mean_ag = mean(PercentAg),
             sample = n())
 
 urb_binned <- data %>% 
   mutate(urb_bin = cut(PercentUrban, breaks = 30)) %>% 
   group_by(species, urb_bin) %>% 
-  summarize(mean_endo = mean(Endo_status_liberal),
+  summarize(mean_endo = mean(Endo_status_conservative),
             mean_urb = mean(PercentUrban),
             sample = n())
 
 nit_binned <- data %>% 
   mutate(nit_bin = cut(TIN_mean, breaks = 30)) %>% 
   group_by(species, nit_bin) %>% 
-  summarize(mean_endo = mean(Endo_status_liberal),
+  summarize(mean_endo = mean(Endo_status_conservative),
             mean_nit = mean(TIN_mean),
             sample = n())
 
@@ -553,8 +553,8 @@ nit_trend <- ggplot(nit.pred) +
 ag_trend <- tag_facet(ag_trend)
 urb_trend <- tag_facet(urb_trend, tag_pool =  letters[-(1:3)])
 nit_trend <- tag_facet(nit_trend, tag_pool =  letters[-(1:6)])
-fig_NO3 <-   ag_trend + urb_trend + nit_trend + plot_layout(ncol = 3, guides = "collect") 
-ggsave(fig_NO3, file = "Figure_2_30km_buffer.png", width = 10, height = 8)
+fig_con <-   ag_trend + urb_trend + nit_trend + plot_layout(ncol = 3,guides = "collect") + plot_annotation(title = "Conservative Scores")
+ggsave(fig_con, file = "Figure_2_conservative.png", width = 10, height = 8)
 
 
 
@@ -563,32 +563,32 @@ ggsave(fig_NO3, file = "Figure_2_30km_buffer.png", width = 10, height = 8)
 ################################################################################################################################
 n_draws <- 500
 
-param_names.10km <- fit.10km$summary.random$fixed$ID
-param_names.30km <- fit.30km$summary.random$fixed$ID
+param_names.lib <- fit.lib$summary.random$fixed$ID
+param_names.con <- fit.con$summary.random$fixed$ID
 
 
 # we can sample values from the join posteriors of the parameters with the addition of "_latent" to the parameter name
-posteriors.10km <- generate(
-  fit.10km,
+posteriors.lib <- generate(
+  fit.lib,
   formula = ~ fixed_latent,
   n.samples = n_draws) 
-rownames(posteriors.10km) <- param_names.10km
-colnames(posteriors.10km) <- c( paste0("iter",1:n_draws))
+rownames(posteriors.lib) <- param_names.lib
+colnames(posteriors.lib) <- c( paste0("iter",1:n_draws))
 
 
-posteriors.30km <- generate(
-  fit.30km,
+posteriors.con <- generate(
+  fit.con,
   formula = ~ fixed_latent,
   n.samples = n_draws) 
-rownames(posteriors.30km) <- param_names.30km
-colnames(posteriors.30km) <- c( paste0("iter",1:n_draws))
+rownames(posteriors.con) <- param_names.con
+colnames(posteriors.con) <- c( paste0("iter",1:n_draws))
 
 
-posteriors.10km_df <- as_tibble(t(posteriors.10km), rownames = "iteration")
-posteriors.30km_df <- as_tibble(t(posteriors.30km), rownames = "iteration")
+posteriors.lib_df <- as_tibble(t(posteriors.lib), rownames = "iteration")
+posteriors.con_df <- as_tibble(t(posteriors.con), rownames = "iteration")
 
 # Calculate the effects of the predictor, given that the reference level is for AGHY
-effects.10km_df <- posteriors.10km_df %>% 
+effects.lib_df <- posteriors.lib_df %>% 
   mutate(NIT.AGHY = std_TIN,
          NIT.AGPE = std_TIN+`Spp_codeAGPE:std_TIN`,
          NIT.ELVI = std_TIN+`Spp_codeELVI:std_TIN`,
@@ -601,9 +601,9 @@ effects.10km_df <- posteriors.10km_df %>%
          INT.AGHY = Spp_codeAGHY,
          INT.AGPE = Spp_codeAGPE,
          INT.ELVI = Spp_codeELVI) %>% 
-  select(-all_of(param_names.10km)) %>% 
+  select(-all_of(param_names.lib)) %>% 
   pivot_longer( cols = -c(iteration), names_to = "param") %>% 
-  mutate(model = "10km buffer") %>% 
+  mutate(model = "Liberal Scores") %>% 
   mutate(spp_label = sub(".*\\.", "", param),
          param_label = sub("\\..*","", param)) %>% 
   mutate(param_f = factor(case_when(param_label == "INT" ~ "Intercept",
@@ -614,22 +614,22 @@ effects.10km_df <- posteriors.10km_df %>%
                         levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus")))
   )
 
-effects.30km_df <- posteriors.30km_df %>% 
+effects.con_df <- posteriors.con_df %>% 
   mutate(NIT.AGHY = std_TIN,
          NIT.AGPE = std_TIN+`Spp_codeAGPE:std_TIN`,
          NIT.ELVI = std_TIN+`Spp_codeELVI:std_TIN`,
-         AG.AGHY = std_ag_30km,
-         AG.AGPE = std_ag_30km+`Spp_codeAGPE:std_ag_30km`,
-         AG.ELVI = std_ag_30km+`Spp_codeELVI:std_ag_30km`,
-         URB.AGHY = std_urb_30km,
-         URB.AGPE = std_urb_30km+`Spp_codeAGPE:std_urb_30km`,
-         URB.ELVI = std_urb_30km+`Spp_codeELVI:std_urb_30km`,
+         AG.AGHY = std_ag,
+         AG.AGPE = std_ag+`Spp_codeAGPE:std_ag`,
+         AG.ELVI = std_ag+`Spp_codeELVI:std_ag`,
+         URB.AGHY = std_urb,
+         URB.AGPE = std_urb+`Spp_codeAGPE:std_urb`,
+         URB.ELVI = std_urb+`Spp_codeELVI:std_urb`,
          INT.AGHY = Spp_codeAGHY,
          INT.AGPE = Spp_codeAGPE,
          INT.ELVI = Spp_codeELVI) %>% 
-  select(-all_of(param_names.30km)) %>% 
+  select(-all_of(param_names.con)) %>% 
   pivot_longer( cols = -c(iteration), names_to = "param") %>% 
-  mutate(model = "30km buffer") %>% 
+  mutate(model = "Conservative Scores") %>% 
   mutate(spp_label = sub(".*\\.", "", param),
          param_label = sub("\\..*","", param)) %>% 
   mutate(param_f = factor(case_when(param_label == "INT" ~ "Intercept",
@@ -640,7 +640,7 @@ effects.30km_df <- posteriors.30km_df %>%
                         levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus")))
   )
 
-effects_df <- bind_rows(effects.10km_df, effects.30km_df)
+effects_df <- bind_rows(effects.lib_df, effects.con_df)
 
 
 
@@ -663,7 +663,7 @@ posterior_hist <- ggplot(filter(effects_df))+
 
 # posterior_hist
 posterior_hist <- tag_facet2(posterior_hist)
-ggsave(posterior_hist, filename = "Buffer_comparison_posterior_without_year.png", width = 12, height = 7)
+ggsave(posterior_hist, filename = "libcon_comparison_posterior_without_year.png", width = 12, height = 7)
 
 
 
@@ -694,18 +694,18 @@ summary_data <- data %>%
 preddata_aghy <- expand.grid(Spp_code = c("AGHY"), 
                              std_year = seq(summary_data[summary_data$Spp_code == "AGHY",]$min_year, summary_data[summary_data$Spp_code == "AGHY",]$max_year, length.out = 20), 
                              std_TIN = c(summary_data[summary_data$Spp_code == "AGHY",]$min_nit, summary_data[summary_data$Spp_code == "AGHY",]$max_nit),
-                             std_ag_30km = 0,
-                             std_urb_30km = 0)
+                             std_ag = 0,
+                             std_urb = 0)
 preddata_agpe <- expand.grid(Spp_code = c("AGPE"), 
                              std_year = seq(summary_data[summary_data$Spp_code == "AGPE",]$min_year, summary_data[summary_data$Spp_code == "AGPE",]$max_year, length.out = 20), 
                              std_TIN = c(summary_data[summary_data$Spp_code == "AGPE",]$min_nit, summary_data[summary_data$Spp_code == "AGPE",]$max_nit),
-                             std_ag_30km = 0,
-                             std_urb_30km = 0)
+                             std_ag = 0,
+                             std_urb = 0)
 preddata_elvi <- expand.grid(Spp_code = c("ELVI"), 
                              std_year = seq(summary_data[summary_data$Spp_code == "ELVI",]$min_year, summary_data[summary_data$Spp_code == "ELVI",]$max_year, length.out = 20), 
                              std_TIN = c(summary_data[summary_data$Spp_code == "ELVI",]$min_nit, summary_data[summary_data$Spp_code == "ELVI",]$max_nit),
-                             std_ag_30km = 0,
-                             std_urb_30km = 0)
+                             std_ag = 0,
+                             std_urb = 0)
 
 preddata <- bind_rows(preddata_aghy, preddata_agpe, preddata_elvi) %>% 
   mutate(collector_index = 9999, scorer_index = 9999,
@@ -721,7 +721,7 @@ preddata <- bind_rows(preddata_aghy, preddata_agpe, preddata_elvi) %>%
 
 
 year.nit.pred <- predict(
-  fit.30km.year,
+  fit.con.year,
   newdata = preddata,
   formula = ~ invlogit(fixed),#+ collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
@@ -736,7 +736,7 @@ endo_herb_binned <- endo_herb %>%
   group_by(Spp_code, species,binned_nit, binned_year) %>%
   summarise(mean_nit = mean(std_TIN),
             mean_year = mean(year),
-            mean_endo = mean(Endo_status_liberal),
+            mean_endo = mean(Endo_status_conservative),
             sample = n()) %>%
   mutate(nit_bin = case_when(mean_nit>=0~ "High Nitrogen",
                             mean_nit<0 ~ "Low Nitrogen"))
@@ -785,29 +785,29 @@ nit_yr_trend
 
 n_draws <- 500
 
-param_names.10km.year <- fit.10km.year$summary.random$fixed$ID
-param_names.30km.year <- fit.30km.year$summary.random$fixed$ID
+param_names.lib.year <- fit.lib.year$summary.random$fixed$ID
+param_names.con.year <- fit.con.year$summary.random$fixed$ID
 
 
 # we can sample values from the join posteriors of the parameters with the addition of "_latent" to the parameter name
-posteriors.10km.year <- generate(
-  fit.10km.year,
+posteriors.lib.year <- generate(
+  fit.lib.year,
   formula = ~ fixed_latent,
   n.samples = n_draws) 
-rownames(posteriors.10km.year) <- param_names.10km.year
-colnames(posteriors.10km.year) <- c( paste0("iter",1:n_draws))
+rownames(posteriors.lib.year) <- param_names.lib.year
+colnames(posteriors.lib.year) <- c( paste0("iter",1:n_draws))
 
 
-posteriors.30km.year <- generate(
-  fit.30km.year,
+posteriors.con.year <- generate(
+  fit.con.year,
   formula = ~ fixed_latent,
   n.samples = n_draws) 
-rownames(posteriors.30km.year) <- param_names.30km.year
-colnames(posteriors.30km.year) <- c( paste0("iter",1:n_draws))
+rownames(posteriors.con.year) <- param_names.con.year
+colnames(posteriors.con.year) <- c( paste0("iter",1:n_draws))
 
 
-posteriors.10km.year_df <- as_tibble(t(posteriors.10km.year), rownames = "iteration")
-posteriors.30km.year_df <- as_tibble(t(posteriors.30km.year), rownames = "iteration")
+posteriors.lib.year_df <- as_tibble(t(posteriors.lib.year), rownames = "iteration")
+posteriors.con.year_df <- as_tibble(t(posteriors.con.year), rownames = "iteration")
 
 
 
@@ -816,7 +816,7 @@ posteriors.30km.year_df <- as_tibble(t(posteriors.30km.year), rownames = "iterat
 
 
 # Calculate the effects of the predictor, given that the reference level is for AGHY
-effects.10km.year_df <- posteriors.10km.year_df %>% 
+effects.lib.year_df <- posteriors.lib.year_df %>% 
   mutate(NIT.AGHY = std_TIN,
          NIT.AGPE = std_TIN+`Spp_codeAGPE:std_TIN`,
          NIT.ELVI = std_TIN+`Spp_codeELVI:std_TIN`,
@@ -841,9 +841,9 @@ effects.10km.year_df <- posteriors.10km.year_df %>%
          INT.AGHY = Spp_codeAGHY,
          INT.AGPE = Spp_codeAGPE,
          INT.ELVI = Spp_codeELVI) %>% 
-  select(-all_of(param_names.10km.year)) %>% 
+  select(-all_of(param_names.lib.year)) %>% 
   pivot_longer( cols = -c(iteration), names_to = "param") %>% 
-  mutate(model = "10km buffer") %>% 
+  mutate(model = "Liberal Scores") %>% 
   mutate(spp_label = sub(".*\\.", "", param),
          param_label = sub("\\..*","", param)) %>% 
   mutate(param_f = factor(case_when(param_label == "INT" ~ "Intercept",
@@ -860,34 +860,34 @@ effects.10km.year_df <- posteriors.10km.year_df %>%
   )
 
 
-effects.30km.year_df <- posteriors.30km.year_df %>% 
+effects.con.year_df <- posteriors.con.year_df %>% 
   mutate(NIT.AGHY = std_TIN,
          NIT.AGPE = std_TIN+`Spp_codeAGPE:std_TIN`,
          NIT.ELVI = std_TIN+`Spp_codeELVI:std_TIN`,
-         URB.AGHY = std_urb_30km,
-         URB.AGPE = std_urb_30km+`Spp_codeAGPE:std_urb_30km`,
-         URB.ELVI = std_urb_30km+`Spp_codeELVI:std_urb_30km`,
-         AG.AGHY = std_ag_30km,
-         AG.AGPE = std_ag_30km+`Spp_codeAGPE:std_urb_30km`,
-         AG.ELVI = std_ag_30km+`Spp_codeELVI:std_urb_30km`,
+         URB.AGHY = std_urb,
+         URB.AGPE = std_urb+`Spp_codeAGPE:std_urb`,
+         URB.ELVI = std_urb+`Spp_codeELVI:std_urb`,
+         AG.AGHY = std_ag,
+         AG.AGPE = std_ag+`Spp_codeAGPE:std_urb`,
+         AG.ELVI = std_ag+`Spp_codeELVI:std_urb`,
          YEAR.AGHY = std_year,
          YEAR.AGPE = std_year+`Spp_codeAGPE:std_year`,
          YEAR.ELVI = std_year+`Spp_codeELVI:std_year`,
          YEARxNIT.AGHY = `std_year:std_TIN`,
          YEARxNIT.AGPE = `std_year:std_TIN`+`Spp_codeAGPE:std_year:std_TIN`,
          YEARxNIT.ELVI = `std_year:std_TIN`+`Spp_codeELVI:std_year:std_TIN`,
-         YEARxURB.AGHY = `std_year:std_urb_30km`,
-         YEARxURB.AGPE = `std_year:std_urb_30km`+`Spp_codeAGPE:std_year:std_urb_30km`,
-         YEARxURB.ELVI = `std_year:std_urb_30km`+`Spp_codeELVI:std_year:std_urb_30km`,
-         YEARxAG.AGHY = `std_year:std_ag_30km`,
-         YEARxAG.AGPE = `std_year:std_ag_30km`+`Spp_codeAGPE:std_year:std_ag_30km`,
-         YEARxAG.ELVI = `std_year:std_ag_30km`+`Spp_codeELVI:std_year:std_ag_30km`,
+         YEARxURB.AGHY = `std_year:std_urb`,
+         YEARxURB.AGPE = `std_year:std_urb`+`Spp_codeAGPE:std_year:std_urb`,
+         YEARxURB.ELVI = `std_year:std_urb`+`Spp_codeELVI:std_year:std_urb`,
+         YEARxAG.AGHY = `std_year:std_ag`,
+         YEARxAG.AGPE = `std_year:std_ag`+`Spp_codeAGPE:std_year:std_ag`,
+         YEARxAG.ELVI = `std_year:std_ag`+`Spp_codeELVI:std_year:std_ag`,
          INT.AGHY = Spp_codeAGHY,
          INT.AGPE = Spp_codeAGPE,
          INT.ELVI = Spp_codeELVI) %>% 
-  select(-all_of(param_names.30km.year)) %>% 
+  select(-all_of(param_names.con.year)) %>% 
   pivot_longer( cols = -c(iteration), names_to = "param") %>% 
-  mutate(model = "30km buffer") %>% 
+  mutate(model = "Conservative Scores") %>% 
   mutate(spp_label = sub(".*\\.", "", param),
          param_label = sub("\\..*","", param)) %>% 
   mutate(param_f = factor(case_when(param_label == "INT" ~ "Intercept",
@@ -904,7 +904,7 @@ effects.30km.year_df <- posteriors.30km.year_df %>%
   )
 
 
-effects.year_df <- bind_rows(effects.10km.year_df, effects.30km.year_df)
+effects.year_df <- bind_rows(effects.lib.year_df, effects.con.year_df)
 
 
 
@@ -931,7 +931,7 @@ posterior_hist <- ggplot(effects.year_df)+
   theme_bw() + theme(axis.text.y = element_text(face = "italic"))
 
 posterior_hist <- tag_facet2(posterior_hist)
-ggsave(posterior_hist, filename = "Buffer_posterior_comparison_with_year.png", width = 12, height = 7)
+ggsave(posterior_hist, filename = "libcon_comparison_with_year.png", width = 12, height = 7)
 
 
 
