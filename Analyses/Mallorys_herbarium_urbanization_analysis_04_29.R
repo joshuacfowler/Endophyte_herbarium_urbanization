@@ -48,47 +48,81 @@ Joshpath <- "Analyses/"
 path <- Joshpath
 
 
-# endo_herb_georef <- read_csv(file = paste0(path, "Zonalhist_NLCD_10km_.csv")) %>%
-#   filter(Country != "Canada") %>%
-#   mutate(Spp_code = case_when(grepl("AGHY", Sample_id) ~ "AGHY",
-#                               grepl("ELVI", Sample_id) ~ "ELVI",
-#                               grepl("AGPE", Sample_id) ~ "AGPE")) %>%
-#   mutate(species_index = as.factor(case_when(Spp_code == "AGHY" ~ "1",
-#                                              Spp_code == "AGPE" ~ "2",
-#                                              Spp_code == "ELVI" ~ "3"))) %>%
-#   mutate(species = case_when(Spp_code == "AGHY" ~ "A. hyemalis",
-#                              Spp_code == "AGPE" ~ "A. perennans",
-#                              Spp_code == "ELVI" ~ "E. virginicus")) %>%
-#   mutate(decade = floor(year/10)*10)%>%
-#   mutate(DevelopedOpenSpace = HISTO_21,
-#          DevelopedLowIntensity = HISTO_22,
-#          MediumDeveloped = HISTO_23,
-#          HighDeveloped = HISTO_24,
-#          PastureHay = HISTO_81,
-#          CultivatedCrops = HISTO_82,
-#          TotalAg = PastureHay + CultivatedCrops,
-#          TotalPixels = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24 + HISTO_0 + HISTO_11 +HISTO_12 + HISTO_31 +HISTO_41 + HISTO_42 + HISTO_43 + HISTO_52 + HISTO_71+ HISTO_90 + TotalAg + HISTO_95,
-#          TotalDeveloped = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24,
-#          OtherLC = (TotalPixels - (TotalAg + TotalDeveloped))/TotalPixels *100,
-#          PercentUrban = TotalDeveloped/TotalPixels * 100,
-#          PercentAg = TotalAg/TotalPixels * 100)
-# 
-# # Doing some filtering to remove NA's and some data points that probably aren't accurate species id's
-# endo_herb <- endo_herb_georef %>%
-#   filter(!is.na(Endo_statu)) %>%
-#   filter(!is.na(Spp_code)) %>%
-#   filter(!is.na(lon) & !is.na(year)) %>%
-#   filter(lon>-110 ) %>%
-#   filter(Country != "Canada" ) %>%
-#   mutate(year_bin = case_when(year<1970 ~ "pre-1970",
-#                               year>=1970 ~ "post-1970")) %>%
-#   mutate(endo_status_text = case_when(Endo_statu == 0 ~ "E-",
-#                                       Endo_statu == 1 ~ "E+"))
-# #loading in nitrogen data too
-# nit <- read.csv(file = "endo_herb_nit.csv")
-# nitendoherb <- merge(nit, endo_herb)
-# endo_herb <- nitendoherb
-# write.csv(endo_herb, file = "EndoHerb_withNitrogen.csv")
+endo_herb_georef <- read_csv(file = paste0(path, "full_Zonalhist_NLCD_2001_10km.csv")) %>%
+  filter(Country != "Canada") %>%
+  mutate(Spp_code = case_when(grepl("AGHY", Sample_id) ~ "AGHY",
+                              grepl("ELVI", Sample_id) ~ "ELVI",
+                              grepl("AGPE", Sample_id) ~ "AGPE")) %>%
+  mutate(species_index = as.factor(case_when(Spp_code == "AGHY" ~ "1",
+                                             Spp_code == "AGPE" ~ "2",
+                                             Spp_code == "ELVI" ~ "3"))) %>%
+  mutate(species = case_when(Spp_code == "AGHY" ~ "A. hyemalis",
+                             Spp_code == "AGPE" ~ "A. perennans",
+                             Spp_code == "ELVI" ~ "E. virginicus")) %>%
+  mutate(decade = floor(year/10)*10)%>%
+  mutate(DevelopedOpenSpace = HISTO_21,
+         DevelopedLowIntensity = HISTO_22,
+         MediumDeveloped = HISTO_23,
+         HighDeveloped = HISTO_24,
+         PastureHay = HISTO_81,
+         CultivatedCrops = HISTO_82,
+         TotalAg = PastureHay + CultivatedCrops,
+         TotalPixels = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24 + HISTO_0 + HISTO_11 +HISTO_12 + HISTO_31 +HISTO_41 + HISTO_42 + HISTO_43 + HISTO_52 + HISTO_71+ HISTO_90 + TotalAg + HISTO_95,
+         TotalDeveloped = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24,
+         OtherLC = (TotalPixels - (TotalAg + TotalDeveloped))/TotalPixels *100,
+         PercentUrban = TotalDeveloped/TotalPixels * 100,
+         PercentAg = TotalAg/TotalPixels * 100)
+
+#fixing column names in yearly_endo and filtering
+yearly_endo <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/endo_herb_yearly_nlcd.csv")%>%
+  filter(Country != "Canada") %>%
+  mutate(Spp_code = case_when(grepl("AGHY", Sample_id) ~ "AGHY",
+                              grepl("ELVI", Sample_id) ~ "ELVI",
+                              grepl("AGPE", Sample_id) ~ "AGPE")) %>%
+  mutate(species_index = as.factor(case_when(Spp_code == "AGHY" ~ "1",
+                                             Spp_code == "AGPE" ~ "2",
+                                             Spp_code == "ELVI" ~ "3"))) %>%
+  mutate(species = case_when(Spp_code == "AGHY" ~ "A. hyemalis",
+                             Spp_code == "AGPE" ~ "A. perennans",
+                             Spp_code == "ELVI" ~ "E. virginicus")) %>%
+  mutate(decade = floor(year/10)*10)%>%
+  mutate(DevelopedOpenSpace = HISTO_21,
+         DevelopedLowIntensity = HISTO_22,
+         MediumDeveloped = HISTO_23,
+         HighDeveloped = HISTO_24,
+         PastureHay = HISTO_81,
+         CultivatedCrops = HISTO_82,
+         TotalAg = PastureHay + CultivatedCrops,
+         TotalPixels = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24 + HISTO_11 +HISTO_12 + HISTO_31 +HISTO_41 + HISTO_42 + HISTO_43 + HISTO_52 + HISTO_71+ HISTO_90 + TotalAg + HISTO_95,
+         TotalDeveloped = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24,
+         OtherLC = (TotalPixels - (TotalAg + TotalDeveloped))/TotalPixels *100,
+         spec_PercentUrban = TotalDeveloped/TotalPixels * 100,
+         spec_PercentAg = TotalAg/TotalPixels * 100)%>%
+  select(Sample_id,spec_PercentUrban, spec_PercentAg)
+
+
+
+endo_herb_georef <- left_join(endo_herb_georef, yearly_endo, by = "Sample_id")
+
+ 
+# Doing some filtering to remove NA's and some data points that probably aren't accurate species id's
+endo_herb <- endo_herb_georef %>%
+  filter(!is.na(Endo_status_liberal)) %>%
+  filter(!is.na(Spp_code)) %>%
+  filter(!is.na(lon) & !is.na(year)) %>%
+  filter(lon>-110 ) %>%
+  filter(Country != "Canada" ) %>%
+  mutate(year_bin = case_when(year<1970 ~ "pre-1970",
+                              year>=1970 ~ "post-1970")) %>%
+  mutate(endo_status_text = case_when(Endo_status_liberal == 0 ~ "E-",
+                                      Endo_status_liberal == 1 ~ "E+"))
+#loading in nitrogen data too
+nit <- read.csv(file = "endo_herb_nit.csv") %>%
+  select(Sample_id, NO3_mean, NH4_mean, TIN_mean)
+
+nitendoherb <- left_join(nit, endo_herb, by = "Sample_id")
+endo_herb <- nitendoherb
+write.csv(endo_herb, file = "EndoHerb_withNitrogen.csv")
 
 endo_herb_10km <- read_csv(file = "~/Dropbox/endophyte_herbarium_urbanization_project/Mallorys_data/EndoHerb_withNitrogen.csv") %>%
 
@@ -456,7 +490,9 @@ endo_urb_map <- ggplot(data = counties_data) +
   scale_fill_gradient(low = "lightgray", high = "#021475", na.value = NA)+
   labs(x = "Longitude", y = "Latitude", fill = "% Urban")+
   theme_light()+
-  theme(legend.text = element_text(face = "italic"))+
+  theme(legend.text = element_text(face = "italic",size = 14),
+        legend.title = element_text(size = 10)
+  )+
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank())
 endo_urb_map
@@ -483,7 +519,9 @@ endo_ag_map <- ggplot(data = counties_data_ag) +
   coord_cartesian(xlim = c(-109, -68), ylim = c(25, 48))+
   scale_fill_gradient(low = "lightgray", high = "#B38600", na.value = NA)+
   theme_light() +
-  theme(legend.text = element_text(face = "italic")) +
+  theme(legend.text = element_text(face = "italic", size = 14),
+        legend.title = element_text(size = 10)
+  ) +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank())+
   labs(x = "Longitude", y = "Latitude", fill = "% Agricultural")
@@ -513,7 +551,9 @@ endo_nit_map <- ggplot(data = counties_data_nit) +
   theme_light() +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank())+
-  theme(legend.text = element_text(face = "italic")) +
+  theme(legend.text = element_text(face = "italic",size = 14),
+        legend.title = element_text(size = 10)
+  ) +
   labs(x = "Longitude", y = "Latitude", fill = "Kg N/sqkm")
 
 #Compile maps into one panel
