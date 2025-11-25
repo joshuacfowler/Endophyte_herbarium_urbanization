@@ -245,6 +245,17 @@ endo_status_map
 
 # ggsave(endo_status_map, filename = "endo_status_map.png", width = 10, height = 5)
 
+####################################### climate correlations ##################################
+library(corrplot)
+
+climate <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/PRISM_yearly_df.csv")
+endo_herb <- merge(endo_herb, climate, by = c("lon", "lat", "year"))
+
+#select land cover and clim columns for correlation matrix
+clim_land_cor <- endo_herb[, c("TIN_mean", "PercentUrban", "PercentAg", "tmean", "ppt")]
+clim_land_cor$geometry <- NULL
+clim_land_cor <- cor(clim_land_cor)
+clim_land_cor_plot <- corrplot(clim_land_cor, method = "number") 
 
 
 # plotting the relationship between percentag and percenturban
