@@ -105,7 +105,7 @@ yearly_endo <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herb
 
 endo_herb_georef <- left_join(endo_herb_georef, yearly_endo, by = "Sample_id")
 
- 
+
 # Doing some filtering to remove NA's and some data points that probably aren't accurate species id's
 endo_herb <- endo_herb_georef %>%
   filter(!is.na(Endo_status_liberal)) %>%
@@ -152,7 +152,7 @@ endo_herb_10km <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_h
 # dataset with land cover types extracted from 30km radius buffer around points
 #endo_herb_30km <- read_csv(file = "~/Dropbox/endophyte_herbarium_urbanization_project/Mallorys_data/EndoHerb_withNitrogen_avgcosize.csv") %>%
 endo_herb_30km <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/EndoHerb_withNitrogen_avgcosize.csv") %>%
-
+  
   mutate(sample_temp = Sample_id) %>%
   separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
   mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
@@ -352,11 +352,11 @@ correlation_color_fxn <- function(data, mapping, method="pearson", use="pairwise
 }
 
 pairs_plot <- ggpairs(predictors,
-        upper = list(continuous = correlation_color_fxn),
-        diag = list(continuous = function(...)
-          ggally_barDiag(..., fill = "grey30",  bins = 50) + theme_minimal()),
-        lower = list(continuous = function(...)
-          ggally_points(..., color = "grey30", shape = 21) + theme_minimal()))+
+                      upper = list(continuous = correlation_color_fxn),
+                      diag = list(continuous = function(...)
+                        ggally_barDiag(..., fill = "grey30",  bins = 50) + theme_minimal()),
+                      lower = list(continuous = function(...)
+                        ggally_points(..., color = "grey30", shape = 21) + theme_minimal()))+
   theme(# adjust strip texts
     strip.background = element_blank(), # remove color
     strip.text = element_text(size=12), # change font and font size
@@ -385,10 +385,8 @@ summary_endo_herb <- endo_herb %>%
   filter(month<=12&month>0) %>% 
   group_by(species) %>% 
   dplyr::summarize(n(),
-            avg_seed = mean(seed_scored, na.rm = T),
-            avg_month = mode(as.numeric(month)),
-            min_year = min(year),
-            max_year = max(year))
+                   avg_seed = mean(seed_scored, na.rm = T),
+                   avg_month = mode(as.numeric(month)))
 
 
 # generating summary of collections
@@ -396,14 +394,6 @@ collection_summary <- endo_herb %>%
   filter(score_number == 1) %>% 
   group_by(Herb_code, Spp_code) %>% 
   summarize(count = n())
-
-# summary of specimens without counties
-
-city_coords_endo_herb <- endo_herb %>% 
-  filter(score_number == 1) %>% 
-  filter(!is.na(Endo_status_liberal)) %>% 
-  filter(is.na(Municipality))
-
 
 #######################################################################################
 ################################## Mean endo status by species###########################
@@ -576,7 +566,8 @@ ggsave(mapfig, file = "Map_Figure.png", width = 5, height = 9)
 
 # Build the spatial mesh from the coords for each species and a boundary around each species predicted distribution (eventually from Jacob's work ev)
 
-data <- endo_herb
+data <- endo_herb %>%
+  filter(!is.na(spec_PercentAg),!is.na(spec_PercentUrban)) 
 
 # Build the spatial mesh from the coords for each species and a boundary around each species predicted distribution (eventually from Jacob's work ev)
 coords <- cbind(data$easting, data$northing)
@@ -616,7 +607,7 @@ mesh <- fm_mesh_2d_inla(
   # crs=CRS(proj4string(bdry_polygon))
 ) # cutoff is min edge
 # plot it
-# plot(mesh)
+plot(mesh)
 
 
 mesh_plot <- ggplot() +
@@ -626,8 +617,8 @@ mesh_plot <- ggplot() +
   theme_bw() +
   labs(x = "", y = "", color = "Species")+
   theme(legend.text = element_text(face = "italic"))
-# mesh_plot
-#ggsave(mesh_plot, filename = "mesh_plot.png", width = 6, height = 5)
+mesh_plot
+#ggsave(mesh_plot, filename = "yr_specific_mesh_plot.png", width = 6, height = 5)
 
 
 
@@ -672,22 +663,9 @@ pc_prec <- list(prior = "pcprec", param = c(1, 0.1))
 
 # comparing different levels of interactions
 
-# s_components.1 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg*std_year*PercentUrban, model = "fixed")+
-#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-#   space_int(coords, model = spde) 
-#   
-# s_components.2 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg*std_year + Spp_code*PercentUrban*std_year, model = "fixed")+
-#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-#   space_int(coords, model = spde) 
-# 
-# s_components.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*NO3_mean, model = "fixed")+
-#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-#   space_int(coords, model = spde)
 
-s_components.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*std_TIN + Spp_code*std_year*std_ag + Spp_code*std_year*std_urb, model = "fixed")+
+
+s_components.yr_specific <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*year*TIN_mean + Spp_code*year*spec_PercentAg + Spp_code*year*spec_PercentUrban, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
@@ -695,78 +673,18 @@ s_components.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*std_TIN + Spp_cod
 
 
 
-
-s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_ag + Spp_code*std_urb + Spp_code*std_TIN, model = "fixed")+
+s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*spec_PercentAg + Spp_code*spec_PercentUrban + Spp_code*TIN_mean, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde) 
 
-# s_components.tin <- ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*TIN_mean, model = "fixed")+
-#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-#   space_int(coords, model = spde) 
-# 
-# s_components.tinyr <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*TIN_mean, model = "fixed")+
-#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-#   space_int(coords, model = spde)
-# 
-# s_components.nh4yr <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*NH4_mean, model = "fixed")+
-#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-#   space_int(coords, model = spde)
 
-# s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_ag + Spp_code*std_urb + Spp_code*std_nit, model = "fixed")+
-#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-#   space_int(coords, model = spde) 
 
-# s_components.5 <-  ~ 0 + species(main = ~ 0 + Spp_code, model = "fixed") +  
-#   species.ag(main = ~ 0 + Spp_code:PercentAg, model = "fixed") + species.urb(main = ~ 0 + Spp_code:PercentUrban, model = "fixed") + species.nit(main = ~ 0 +Spp_code:NO3_mean, model = "fixed")+
-#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-#   space_int(coords, model = spde) 
-# 
-# s_components.5 <-  ~ 0 + fixed(main = ~ 0 + Spp_code*PercentAg*std_year + Spp_code*PercentUrban*std_year + Spp_code*NO3_mean*std_year, model = "fixed")+
-#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-#   space_int(coords, model = spde) 
-# putting the components with the formula
 s_formula <- Endo_status_liberal ~ .
 
 
-# Now run the model
 
-# fit.1 <- bru(s_components.1,
-#            like(
-#              formula = s_formula,
-#              family = "binomial",
-#              Ntrials = 1,
-#              data = data
-#            ),
-#            options = list(
-#              control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-#              control.inla = list(int.strategy = "eb"),
-#              verbose = TRUE
-#            )
-# )
-# 
-# fit.2 <- bru(s_components.2,
-#              like(
-#                formula = s_formula,
-#                family = "binomial",
-#                Ntrials = 1,
-#                data = data
-#              ),
-#              options = list(
-#                control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-#                control.inla = list(int.strategy = "eb"),
-#                verbose = TRUE
-#              )
-# )
-
-
-fit.3 <- bru(s_components.3,
+fit.3 <- bru(s_components.yr_specific,
              like(
                formula = s_formula,
                family = "binomial",
@@ -795,61 +713,6 @@ fit.4 <- bru(s_components.4,
              )
 )
 
-# fit.tin <- bru(s_components.tin,
-#                    like(
-#                      formula = s_formula,
-#                      family = "binomial",
-#                      Ntrials = 1,
-#                      data = data
-#                    ),
-#                    options = list(
-#                      control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-#                      control.inla = list(int.strategy = "eb"),
-#                      verbose = TRUE
-#                    )
-# )
-
-# fit.tinyr <- bru(s_components.tinyr,
-#              like(
-#                formula = s_formula,
-#                family = "binomial",
-#                Ntrials = 1,
-#                data = data
-#              ),
-#              options = list(
-#                control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-#                control.inla = list(int.strategy = "eb"),
-#                verbose = TRUE
-#              )
-# )
-# 
-# fit.nh4yr <- bru(s_components.nh4yr,
-#                  like(
-#                    formula = s_formula,
-#                    family = "binomial",
-#                    Ntrials = 1,
-#                    data = data
-#                  ),
-#                  options = list(
-#                    control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-#                    control.inla = list(int.strategy = "eb"),
-#                    verbose = TRUE
-#                  )
-# )
-
-# fit.5 <- bru(s_components.5,
-#              like(
-#                formula = s_formula,
-#                family = "binomial",
-#                Ntrials = 1,
-#                data = data
-#              ),
-#              options = list(
-#                control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-#                control.inla = list(int.strategy = "eb"),
-#                verbose = TRUE
-#              )
-# )
 
 fit.1$dic$dic
 fit.2$dic$dic
@@ -869,46 +732,43 @@ fit.2 <- read_rds(file = "fit_wo_N.rds")
 
 
 
-
-
-
 ################################################################################################################################
 ##########  Plotting the prediction without year effects ###############
 ################################################################################################################################
 
-min_ag<- min(data$PercentAg)
-mean_ag <- mean(data$PercentAg)
-max_ag <- max(data$PercentAg)
+min_ag<- min(data$spec_PercentAg)
+mean_ag <- mean(data$spec_PercentAg)
+max_ag <- max(data$spec_PercentAg)
 
-min_urb<- min(data$PercentUrban)
-mean_urb <- mean(data$PercentUrban)
-max_urb<- max(data$PercentUrban)
+min_urb<- min(data$spec_PercentUrban)
+mean_urb <- mean(data$spec_PercentUrban)
+max_urb<- max(data$spec_PercentUrban)
 
 min_nit<- min(data$TIN_mean)
 mean_nit <- mean(data$TIN_mean)
 max_nit<- max(data$TIN_mean)
 
 preddata.1 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
-                     std_ag = rep(seq(min_ag, max_ag, length.out = 50)-mean_ag, times = 3),
-                     std_urb = 0,
-                     std_TIN = 0,
+                     spec_PercentAg = rep(seq(min_ag, max_ag, length.out = 50), times = 3),
+                     spec_PercentUrban = 0,
+                     TIN_mean = 0,
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
                              Spp_code == "ELVI" ~ species_names[3]))
 preddata.2 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
-                     std_ag = 0,
-                     std_urb = rep(seq(min_urb, max_urb, length.out = 50)-mean_urb, times = 3),
-                     std_TIN = 0,
+                     spec_PercentAg = 0,
+                     spec_PercentUrban = rep(seq(min_urb, max_urb, length.out = 50), times = 3),
+                     TIN_mean = 0,
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
                              Spp_code == "ELVI" ~ species_names[3]))
 
 preddata.3 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
-                     std_ag = 0,
-                     std_urb = 0,
-                     std_TIN = rep(seq(min_nit, max_nit, length.out = 50)-mean_nit, times = 3),
+                     spec_PercentAg = 0,
+                     spec_PercentUrban = 0,
+                     TIN_mean = rep(seq(min_nit, max_nit, length.out = 50)-mean_nit, times = 3),
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
@@ -919,16 +779,16 @@ ag.pred <- predict(
   newdata = preddata.1,
   formula = ~ invlogit(fixed),# + collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
-  n.samples = 100) %>% 
-  mutate(PercentAg = std_ag + mean_ag)
+  n.samples = 100) 
+  #mutate(PercentAg = std_ag + mean_ag)
 
 urb.pred <- predict(
   fit.4,
   newdata = preddata.2,
   formula = ~ invlogit(fixed),# + collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
-  n.samples = 100) %>% 
-  mutate(PercentUrb = std_urb + mean_urb)
+  n.samples = 100)
+  #mutate(PercentUrb = std_urb + mean_urb)
 
 
 nit.pred <- predict(
@@ -936,8 +796,8 @@ nit.pred <- predict(
   newdata = preddata.3,
   formula = ~ invlogit(fixed),# + collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
-  n.samples = 100) %>% 
-  mutate(mean_TIN = std_TIN + mean_nit)
+  n.samples = 100) 
+ # mutate(mean_TIN = std_TIN + mean_nit)
 
 
 
@@ -945,17 +805,17 @@ values <-  c("#b2abd2", "#5e3c99")
 
 
 ag_binned <- data %>% 
-  mutate(ag_bin = cut(PercentAg, breaks = 30)) %>% 
+  mutate(ag_bin = cut(spec_PercentAg, breaks = 30)) %>% 
   group_by(species, ag_bin) %>% 
   summarize(mean_endo = mean(Endo_status_liberal),
-            mean_ag = mean(PercentAg),
+            mean_ag = mean(spec_PercentAg),
             sample = n())
 
 urb_binned <- data %>% 
-  mutate(urb_bin = cut(PercentUrban, breaks = 30)) %>% 
+  mutate(urb_bin = cut(spec_PercentUrban, breaks = 30)) %>% 
   group_by(species, urb_bin) %>% 
   summarize(mean_endo = mean(Endo_status_liberal),
-            mean_urb = mean(PercentUrban),
+            mean_urb = mean(spec_PercentUrban),
             sample = n())
 
 nit_binned <- data %>% 
@@ -966,9 +826,9 @@ nit_binned <- data %>%
             sample = n())
 
 ag_trend <- ggplot(ag.pred) +
-  geom_line(aes(x = PercentAg, mean)) +
-  geom_ribbon(aes(PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#B38600") +
-  geom_ribbon(aes(PercentAg, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
+  geom_line(aes(x = spec_PercentAg, mean)) +
+  geom_ribbon(aes(spec_PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#B38600") +
+  geom_ribbon(aes(spec_PercentAg, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
   geom_point(data = ag_binned, aes(x = mean_ag, y = mean_endo, size = sample), color = "black", shape = 21)+
   scale_size_continuous(limits=c(1,260))+
   facet_wrap(~species,  ncol = 1, scales = "free_x", strip.position="right")+  
@@ -977,12 +837,12 @@ ag_trend <- ggplot(ag.pred) +
   theme(strip.background = element_blank(),
         strip.text = element_blank(),
         plot.margin = unit(c(0,.1,.1,.1), "line"))#+
-  # lims(y = c(0,1), x = c(0, 100))
+# lims(y = c(0,1), x = c(0, 100))
 
 urb_trend <- ggplot(urb.pred) +
-  geom_line(aes(PercentUrb, mean)) +
-  geom_ribbon(aes(PercentUrb, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#021475") +
-  geom_ribbon(aes(PercentUrb, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
+  geom_line(aes(spec_PercentUrban, mean)) +
+  geom_ribbon(aes(spec_PercentUrban, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#021475") +
+  geom_ribbon(aes(spec_PercentUrban, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
   geom_point(data = urb_binned, aes(x = mean_urb, y = mean_endo, size = sample), color = "black", shape = 21)+
   scale_size_continuous(limits=c(1,260))+
   facet_wrap(~species, ncol = 1, scales = "free_x", strip.position="right")+  
@@ -994,9 +854,9 @@ urb_trend <- ggplot(urb.pred) +
 
 
 nit_trend <- ggplot(nit.pred) +
-  geom_line(aes(mean_TIN, mean)) +
-  geom_ribbon(aes(mean_TIN, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#BF00A0") +
-  geom_ribbon(aes(mean_TIN, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
+  geom_line(aes(TIN_mean, mean)) +
+  geom_ribbon(aes(TIN_mean, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#BF00A0") +
+  geom_ribbon(aes(TIN_mean, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
   geom_point(data = nit_binned, aes(x = mean_nit, y = mean_endo, size = sample), color = "black", shape = 21)+
   scale_size_continuous(limits=c(1,260))+
   facet_wrap(~species, ncol = 1, scales = "free_x", strip.position="right")+  
@@ -1012,7 +872,7 @@ ag_trend <- tag_facet(ag_trend)
 urb_trend <- tag_facet(urb_trend, tag_pool =  letters[-(1:3)])
 nit_trend <- tag_facet(nit_trend, tag_pool =  letters[-(1:6)])
 fig1 <-   ag_trend + urb_trend + nit_trend + plot_layout(ncol = 3, guides = "collect") 
-ggsave(fig1, file = "Figure_2.png", width = 10, height = 8)
+ggsave(fig1, file = "yr_specific_Figure_2.png", width = 10, height = 8)
 
 
 
@@ -1057,14 +917,14 @@ effects_df <- posteriors_df %>%
   mutate(spp_label = sub(".*\\.", "", param),
          param_label = sub("\\..*","", param)) %>% 
   mutate(param_f = factor(case_when(param_label == "INT" ~ "Intercept",
-                             param_label == "AG" ~ "Agric. Cover",
-                             param_label == "URB" ~ "Urban Cover",
-                             param_label == "NIT" ~ "Nit. Dep."), levels = c("Intercept", "Agric. Cover", "Urban Cover", "Nit. Dep.")),
+                                    param_label == "AG" ~ "Agric. Cover",
+                                    param_label == "URB" ~ "Urban Cover",
+                                    param_label == "NIT" ~ "Nit. Dep."), levels = c("Intercept", "Agric. Cover", "Urban Cover", "Nit. Dep.")),
          spp_f = factor(case_when(spp_label == "ELVI" ~ "E. virginicus", spp_label == "AGPE" ~ "A. perennans", spp_label == "AGHY" ~ "A. hyemalis"),
                         levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus")))
-         )
-  
-                             
+  )
+
+
 
 
 
@@ -1130,35 +990,35 @@ rocobj$auc
 mean_year <- mean(data$year)
 summary_data <- data %>% 
   group_by(Spp_code) %>% 
-  summarize(min_year = min(std_year),
-            max_year = max(std_year),
-            min_nit = quantile(std_TIN, .05),
-            max_nit = quantile(std_TIN, .95),
-            mean_nit = mean(std_TIN))
+  summarize(min_year = min(year),
+            max_year = max(year),
+            min_nit = quantile(TIN_mean, .05),
+            max_nit = quantile(TIN_mean, .95),
+            mean_nit = mean(TIN_mean))
 
 preddata_aghy <- expand.grid(Spp_code = c("AGHY"), 
-                             std_year = seq(summary_data[summary_data$Spp_code == "AGHY",]$min_year, summary_data[summary_data$Spp_code == "AGHY",]$max_year, length.out = 20), 
-                             std_TIN = c(summary_data[summary_data$Spp_code == "AGHY",]$min_nit, summary_data[summary_data$Spp_code == "AGHY",]$max_nit),
-                             std_ag = 0,
-                             std_urb = 0)
+                             year = seq(summary_data[summary_data$Spp_code == "AGHY",]$min_year, summary_data[summary_data$Spp_code == "AGHY",]$max_year, length.out = 20), 
+                             TIN_mean = c(summary_data[summary_data$Spp_code == "AGHY",]$min_nit, summary_data[summary_data$Spp_code == "AGHY",]$max_nit),
+                             spec_PercentAg = 0,
+                             spec_PercentUrban = 0)
 preddata_agpe <- expand.grid(Spp_code = c("AGPE"), 
-                             std_year = seq(summary_data[summary_data$Spp_code == "AGPE",]$min_year, summary_data[summary_data$Spp_code == "AGPE",]$max_year, length.out = 20), 
-                             std_TIN = c(summary_data[summary_data$Spp_code == "AGPE",]$min_nit, summary_data[summary_data$Spp_code == "AGPE",]$max_nit),
-                             std_ag = 0,
-                             std_urb = 0)
+                             year = seq(summary_data[summary_data$Spp_code == "AGPE",]$min_year, summary_data[summary_data$Spp_code == "AGPE",]$max_year, length.out = 20), 
+                             TIN_mean = c(summary_data[summary_data$Spp_code == "AGPE",]$min_nit, summary_data[summary_data$Spp_code == "AGPE",]$max_nit),
+                             spec_PercentAg = 0,
+                             spec_PercentUrban = 0)
 preddata_elvi <- expand.grid(Spp_code = c("ELVI"), 
-                             std_year = seq(summary_data[summary_data$Spp_code == "ELVI",]$min_year, summary_data[summary_data$Spp_code == "ELVI",]$max_year, length.out = 20), 
-                             std_TIN = c(summary_data[summary_data$Spp_code == "ELVI",]$min_nit, summary_data[summary_data$Spp_code == "ELVI",]$max_nit),
-                             std_ag = 0,
-                             std_urb = 0)
+                             year = seq(summary_data[summary_data$Spp_code == "ELVI",]$min_year, summary_data[summary_data$Spp_code == "ELVI",]$max_year, length.out = 20), 
+                             TIN_mean = c(summary_data[summary_data$Spp_code == "ELVI",]$min_nit, summary_data[summary_data$Spp_code == "ELVI",]$max_nit),
+                             spec_PercentAg = 0,
+                             spec_PercentUrban = 0)
 
 preddata <- bind_rows(preddata_aghy, preddata_agpe, preddata_elvi) %>% 
   mutate(collector_index = 9999, scorer_index = 9999,
          species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
                              Spp_code == "ELVI" ~ species_names[3]),
-         nit_label = case_when(std_TIN > 0 ~ "High Nitrogen",
-                               std_TIN < 0 ~ "Low Nitrogen"))
+         nit_label = case_when(TIN_mean >= mean_nit ~ "High Nitrogen",
+                               TIN_mean < mean_nit ~ "Low Nitrogen"))
 
 
 # gennerating predictions and back-transforming the standardized year variable
@@ -1170,21 +1030,21 @@ year.nit.pred <- predict(
   newdata = preddata,
   formula = ~ invlogit(fixed),#+ collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
-  n.samples = 100) %>% 
-  mutate(year = std_year + mean_year)
+  n.samples = 100)
+ # mutate(year = std_year)
 
 
 # binning the data for plotting
-endo_herb_binned <- endo_herb %>%
-  mutate(binned_nit = cut(std_TIN, breaks = 2),
+endo_herb_binned <- data %>%
+  mutate(binned_nit = cut(TIN_mean, breaks = 2),
          binned_year = cut(year, breaks = 50)) %>%
   group_by(Spp_code, species,binned_nit, binned_year) %>%
-  summarise(mean_nit = mean(std_TIN),
+  summarise(mean_nit = mean(TIN_mean),
             mean_year = mean(year),
             mean_endo = mean(Endo_status_liberal),
             sample = n()) %>%
   mutate(nit_bin = case_when(mean_nit>=0~ "High Nitrogen",
-                            mean_nit<0 ~ "Low Nitrogen"))
+                             mean_nit<0 ~ "Low Nitrogen"))
 
 
 
@@ -1200,24 +1060,24 @@ nit_yr_trend <- ggplot(year.nit.pred)+
   geom_ribbon(aes(year, ymin = q0.025, ymax = q0.975, group = nit_label, fill = nit_label), alpha = 0.3) +
   geom_ribbon(aes(year, ymin = q0.25, ymax = q0.75, group = nit_label, fill = nit_label), alpha = 0.3) +
   geom_line(aes(year, mean, group = nit_label), color = "black") +
-  geom_point(data = endo_herb_binned, aes(x = mean_year, y = mean_endo, fill = nit_bin, size = sample), shape = 21, alpha = .6)+
+#  geom_point(data = endo_herb_binned, aes(x = mean_year, y = mean_endo, fill = nit_bin, size = sample), shape = 21, alpha = .6)+
   facet_wrap(~species, nrow = 3, scales = "free", strip.position="right")+
   guides(color = "none",
          fill = guide_legend(title.position="top", title.hjust = 0.5, order = 1),
          size = guide_legend(title.position="top", title.hjust = 0.5, order = 2))+
   scale_color_manual(values = c("High Nitrogen" = "#BF00A0",
-                               "Low Nitrogen"="darkgray"))+
-  scale_fill_manual(values = c("High Nitrogen" = "#BF00A0",
                                 "Low Nitrogen"="darkgray"))+
+  scale_fill_manual(values = c("High Nitrogen" = "#BF00A0",
+                               "Low Nitrogen"="darkgray"))+
   labs(y = "Endophyte Prevalence", x = "Year", size = "Sample Size", fill = "Nitrogen Deposition")+
   theme_classic()+
   theme(strip.background = element_blank(),
         strip.text = element_text( size = rel(1.1)), strip.text.y.right = element_text(face = "italic",angle = 0),
         plot.margin = unit(c(0,.1,.1,.1), "line"),
         legend.position = "bottom", legend.box = "vertical")+
-  lims(y = c(0,1), x = c(1832, 2020))
+  lims(y = c(0,1), x = c(1985, 2020))
 
-# nit_yr_trend
+ nit_yr_trend
 # ggsave(nit_yr_trend, filename = "Nitrogen_and_Year.png", width = 6, height = 8)
 
 
@@ -1229,35 +1089,35 @@ nit_yr_trend <- ggplot(year.nit.pred)+
 mean_year <- mean(data$year)
 summary_data <- data %>% 
   group_by(Spp_code) %>% 
-  summarize(min_year = min(std_year),
-            max_year = max(std_year),
-            min_ag = quantile(std_ag, .05),
-            max_ag = quantile(std_ag, .95),
-            mean_ag = mean(std_ag))
+  summarize(min_year = min(year),
+            max_year = max(year),
+            min_ag = quantile(spec_PercentAg, .05),
+            max_ag = quantile(spec_PercentAg, .95),
+            mean_ag = mean(spec_PercentAg))
 
 preddata_aghy <- expand.grid(Spp_code = c("AGHY"), 
-                             std_year = seq(summary_data[summary_data$Spp_code == "AGHY",]$min_year, summary_data[summary_data$Spp_code == "AGHY",]$max_year, length.out = 20), 
-                             std_TIN = 0,
-                             std_ag = c(summary_data[summary_data$Spp_code == "AGHY",]$min_ag, summary_data[summary_data$Spp_code == "AGHY",]$max_ag),
-                             std_urb = 0)
+                             year = seq(summary_data[summary_data$Spp_code == "AGHY",]$min_year, summary_data[summary_data$Spp_code == "AGHY",]$max_year, length.out = 20), 
+                             TIN_mean = 0,
+                             spec_PercentAg = c(summary_data[summary_data$Spp_code == "AGHY",]$min_ag, summary_data[summary_data$Spp_code == "AGHY",]$max_ag),
+                             spec_PercentUrban = 0)
 preddata_agpe <- expand.grid(Spp_code = c("AGPE"), 
-                             std_year = seq(summary_data[summary_data$Spp_code == "AGPE",]$min_year, summary_data[summary_data$Spp_code == "AGPE",]$max_year, length.out = 20), 
-                             std_TIN = 0,
-                             std_ag = c(summary_data[summary_data$Spp_code == "AGPE",]$min_ag, summary_data[summary_data$Spp_code == "AGPE",]$max_ag),
-                             std_urb = 0)
+                             year = seq(summary_data[summary_data$Spp_code == "AGPE",]$min_year, summary_data[summary_data$Spp_code == "AGPE",]$max_year, length.out = 20), 
+                             TIN_mean = 0,
+                             spec_PercentAg = c(summary_data[summary_data$Spp_code == "AGPE",]$min_ag, summary_data[summary_data$Spp_code == "AGPE",]$max_ag),
+                             spec_PercentUrban = 0)
 preddata_elvi <- expand.grid(Spp_code = c("ELVI"), 
-                             std_year = seq(summary_data[summary_data$Spp_code == "ELVI",]$min_year, summary_data[summary_data$Spp_code == "ELVI",]$max_year, length.out = 20), 
-                             std_TIN = 0,
-                             std_ag = c(summary_data[summary_data$Spp_code == "ELVI",]$min_ag, summary_data[summary_data$Spp_code == "ELVI",]$max_ag),
-                             std_urb = 0)
+                             year = seq(summary_data[summary_data$Spp_code == "ELVI",]$min_year, summary_data[summary_data$Spp_code == "ELVI",]$max_year, length.out = 20), 
+                             TIN_mean = 0,
+                             spec_PercentAg = c(summary_data[summary_data$Spp_code == "ELVI",]$min_ag, summary_data[summary_data$Spp_code == "ELVI",]$max_ag),
+                             spec_PercentUrban = 0)
 
 preddata <- bind_rows(preddata_aghy, preddata_agpe, preddata_elvi) %>% 
   mutate(collector_index = 9999, scorer_index = 9999,
          species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
                              Spp_code == "ELVI" ~ species_names[3]),
-         ag_label = case_when(std_ag >=0 ~ "High Agr. Cover",
-                               std_ag < 0 ~ "Low Agr. Cover"))
+         ag_label = case_when(spec_PercentAg >=mean_ag ~ "High Agr. Cover",
+                              spec_PercentAg < mean_ag ~ "Low Agr. Cover"))
 
 
 # gennerating predictions and back-transforming the standardized year variable
@@ -1269,41 +1129,33 @@ year.ag.pred <- predict(
   newdata = preddata,
   formula = ~ invlogit(fixed),#+ collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
-  n.samples = 100) %>% 
-  mutate(year = std_year + mean_year)
+  n.samples = 100) 
+ # mutate(year = std_year)
 
 
 # binning the data for plotting
-endo_herb_binned <- endo_herb %>%
-  mutate(binned_ag = cut(std_ag, breaks = 2),
+endo_herb_binned <- data %>%
+  mutate(binned_ag = cut(spec_PercentAg, breaks = 2),
          binned_year = cut(year, breaks = 50)) %>% 
   group_by(Spp_code, species,binned_ag, binned_year) %>%
-  summarise(mean_ag = mean(std_ag),
+  summarise(mean_ag = mean(spec_PercentAg),
             mean_year = mean(year),
             mean_endo = mean(Endo_status_liberal),
             sample = n()) %>%
-  mutate(ag_bin = case_when(mean_ag>=0~ "High Agr. Cover",
-                            mean_ag<0 ~ "Low Agr. Cover"))
+  mutate(ag_bin = case_when(mean_ag>=mean_ag~ "High Agr. Cover",
+                            mean_ag< mean_ag~ "Low Agr. Cover"))
 
 
-
-
-# histogram_data <- endo_herb%>%
-#   mutate(disturbance_label = case_when(NO3_mean > mean(NO3_mean) ~ "Nitrogen",
-#                                     NO3_mean < mean(NO3_mean) ~ "Undisturbed"))
-# histogram_data2 <- endo_herb%>%
-#   mutate(nit_label = case_when(NO3_mean > mean(NO3_mean) ~ "High Nitrogen",
-#                                        NO3_mean < mean(NO3_mean) ~ "Low Nitrogen"))
 
 ag_yr_trend <- ggplot(year.ag.pred)+
   geom_ribbon(aes(year, ymin = q0.025, ymax = q0.975, group = ag_label, fill = ag_label), alpha = 0.3) +
   geom_ribbon(aes(year, ymin = q0.25, ymax = q0.75, group = ag_label, fill = ag_label), alpha = 0.3) +
   geom_line(aes(year, mean, group = ag_label), color = "black") +
-  geom_point(data = endo_herb_binned, aes(x = mean_year, y = mean_endo, fill = ag_bin, size = sample), shape = 21, alpha = .6)+
+#  geom_point(data = endo_herb_binned, aes(x = mean_year, y = mean_endo, fill = ag_bin, size = sample), shape = 21, alpha = .6)+
   facet_wrap(~species, nrow = 3, scales = "free")+
   guides(color = "none",
-    fill = guide_legend(title.position="top", title.hjust = 0.5, order = 1),
-    size = guide_legend(title.position="top", title.hjust = 0.5, order = 2))+
+         fill = guide_legend(title.position="top", title.hjust = 0.5, order = 1),
+         size = guide_legend(title.position="top", title.hjust = 0.5, order = 2))+
   scale_color_manual(values = c("High Agr. Cover" = "#B38600",
                                 "Low Agr. Cover"="darkgray"))+
   scale_fill_manual(values = c("High Agr. Cover" = "#B38600",
@@ -1313,11 +1165,11 @@ ag_yr_trend <- ggplot(year.ag.pred)+
   theme(strip.background = element_blank(),
         strip.text = element_blank(),
         plot.margin = unit(c(0,.1,.1,.1), "line"),
-        legend.position = "bottom", legend.box = "vertical")+
-  lims(y = c(0,1), x = c(1832, 2020))
+        legend.position = "bottom", legend.box = "vertical")
+  #lims(y = c(0,1), x = c(1985, 2020))
 
-# ag_yr_trend
-# ggsave(ag_yr_trend, filename = "Agriculture_and_Year.png", width = 6, height = 8)
+ag_yr_trend
+# ggsave(ag_yr_specific_trend, filename = "Agriculture_and_Year.png", width = 6, height = 8)
 
 
 
@@ -1329,35 +1181,35 @@ ag_yr_trend <- ggplot(year.ag.pred)+
 mean_year <- mean(data$year)
 summary_data <- data %>% 
   group_by(Spp_code) %>% 
-  summarize(min_year = min(std_year),
-            max_year = max(std_year),
-            min_urb = quantile(std_urb, .05),
-            max_urb = quantile(std_urb, .95),
-            mean_urb = mean(std_urb))
+  summarize(min_year = min(year),
+            max_year = max(year),
+            min_urb = quantile(spec_PercentUrban, .05),
+            max_urb = quantile(spec_PercentUrban, .95),
+            mean_urb = mean(spec_PercentUrban))
 
 preddata_aghy <- expand.grid(Spp_code = c("AGHY"), 
-                             std_year = seq(summary_data[summary_data$Spp_code == "AGHY",]$min_year, summary_data[summary_data$Spp_code == "AGHY",]$max_year, length.out = 20), 
-                             std_TIN = 0,
-                             std_ag = 0,
-                             std_urb = c(summary_data[summary_data$Spp_code == "AGHY",]$min_urb, summary_data[summary_data$Spp_code == "AGHY",]$max_urb))
+                             year = seq(summary_data[summary_data$Spp_code == "AGHY",]$min_year, summary_data[summary_data$Spp_code == "AGHY",]$max_year, length.out = 20), 
+                             TIN_mean = 0,
+                             spec_PercentAg = 0,
+                             spec_PercentUrban = c(summary_data[summary_data$Spp_code == "AGHY",]$min_urb, summary_data[summary_data$Spp_code == "AGHY",]$max_urb))
 preddata_agpe <- expand.grid(Spp_code = c("AGPE"), 
-                             std_year = seq(summary_data[summary_data$Spp_code == "AGPE",]$min_year, summary_data[summary_data$Spp_code == "AGPE",]$max_year, length.out = 20), 
-                             std_TIN = 0,
-                             std_ag = 0,
-                             std_urb = c(summary_data[summary_data$Spp_code == "AGPE",]$min_urb, summary_data[summary_data$Spp_code == "AGPE",]$max_urb))
+                             year = seq(summary_data[summary_data$Spp_code == "AGPE",]$min_year, summary_data[summary_data$Spp_code == "AGPE",]$max_year, length.out = 20), 
+                             TIN_mean = 0,
+                             spec_PercentAg = 0,
+                             spec_PercentUrban = c(summary_data[summary_data$Spp_code == "AGPE",]$min_urb, summary_data[summary_data$Spp_code == "AGPE",]$max_urb))
 preddata_elvi <- expand.grid(Spp_code = c("ELVI"), 
-                             std_year = seq(summary_data[summary_data$Spp_code == "ELVI",]$min_year, summary_data[summary_data$Spp_code == "ELVI",]$max_year, length.out = 20), 
-                             std_TIN = 0,
-                             std_ag = 0,
-                             std_urb = c(summary_data[summary_data$Spp_code == "ELVI",]$min_urb, summary_data[summary_data$Spp_code == "ELVI",]$max_urb))
+                             year = seq(summary_data[summary_data$Spp_code == "ELVI",]$min_year, summary_data[summary_data$Spp_code == "ELVI",]$max_year, length.out = 20), 
+                             TIN_mean = 0,
+                             spec_PercentAg = 0,
+                             spec_PercentUrban = c(summary_data[summary_data$Spp_code == "ELVI",]$min_urb, summary_data[summary_data$Spp_code == "ELVI",]$max_urb))
 
 preddata <- bind_rows(preddata_aghy, preddata_agpe, preddata_elvi) %>% 
   mutate(collector_index = 9999, scorer_index = 9999,
          species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
                              Spp_code == "ELVI" ~ species_names[3]),
-         urb_label = case_when(std_urb >=0 ~ "High Urb. Cover",
-                              std_urb < 0 ~ "Low Urb. Cover"))
+         urb_label = case_when(spec_PercentUrban >=mean_urb ~ "High Urb. Cover",
+                               spec_PercentUrban < mean_urb ~ "Low Urb. Cover"))
 
 
 # gennerating predictions and back-transforming the standardized year variable
@@ -1369,37 +1221,29 @@ year.urb.pred <- predict(
   newdata = preddata,
   formula = ~ invlogit(fixed),#+ collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
-  n.samples = 100) %>% 
-  mutate(year = std_year + mean_year)
+  n.samples = 100) 
+ # mutate(year =  std_year)
 
 
 # binning the data for plotting
-endo_herb_binned <- endo_herb %>%
-  mutate(binned_ag = cut(std_urb, breaks = 2),
+endo_herb_binned <- data %>%
+  mutate(binned_ag = cut(spec_PercentAg, breaks = 2),
          binned_year = cut(year, breaks = 50)) %>% 
   group_by(Spp_code, species,binned_ag, binned_year) %>%
-  summarise(mean_urb = mean(std_urb),
+  summarise(mean_urb = mean(spec_PercentUrban),
             mean_year = mean(year),
             mean_endo = mean(Endo_status_liberal),
             sample = n()) %>%
   mutate(urb_bin =  case_when(mean_urb >=0 ~ "High Urb. Cover",
-                             mean_urb < 0 ~ "Low Urb. Cover"))
+                              mean_urb < 0 ~ "Low Urb. Cover"))
 
 
-
-
-# histogram_data <- endo_herb%>%
-#   mutate(disturbance_label = case_when(NO3_mean > mean(NO3_mean) ~ "Nitrogen",
-#                                     NO3_mean < mean(NO3_mean) ~ "Undisturbed"))
-# histogram_data2 <- endo_herb%>%
-#   mutate(nit_label = case_when(NO3_mean > mean(NO3_mean) ~ "High Nitrogen",
-#                                        NO3_mean < mean(NO3_mean) ~ "Low Nitrogen"))
 
 urb_yr_trend <- ggplot(year.urb.pred)+
   geom_ribbon(aes(year, ymin = q0.025, ymax = q0.975, group = urb_label, fill = urb_label), alpha = 0.3) +
   geom_ribbon(aes(year, ymin = q0.25, ymax = q0.75, group = urb_label, fill = urb_label), alpha = 0.3) +
   geom_line(aes(year, mean, group = urb_label), color = "black") +
-  geom_point(data = endo_herb_binned, aes(x = mean_year, y = mean_endo, fill = urb_bin, size = sample), shape = 21, alpha = .6)+
+  #geom_point(data = endo_herb_binned, aes(x = mean_year, y = mean_endo, fill = urb_bin, size = sample), shape = 21, alpha = .6)+
   facet_wrap(~species, nrow = 3, scales = "free")+
   guides(color = "none",
          fill = guide_legend(title.position="top", title.hjust = 0.5, order = 1),
@@ -1414,9 +1258,9 @@ urb_yr_trend <- ggplot(year.urb.pred)+
         strip.text = element_blank(),
         plot.margin = unit(c(0,.1,.1,.1), "line"),
         legend.position = "bottom", legend.box = "vertical")+
-  lims(y = c(0,1), x = c(1832, 2020))
+  lims(y = c(0,1), x = c(1985, 2020))
 
-# urb_yr_trend
+urb_yr_trend
 # ggsave(urb_yr_trend, filename = "Urban_and_Year.png", width = 6, height = 8)
 
 
@@ -1431,7 +1275,7 @@ yr_trend_plot <- ag_yr_trend + urb_yr_trend + nit_yr_trend + plot_layout(ncol = 
 
 #yr_trend_plot
 
-ggsave(yr_trend_plot, filename = "yr_trend_plot.png", width = 10, height = 8)
+#ggsave(yr_trend_plot, filename = "yr_specific_trend_plot.png", width = 10, height = 8)
 
 
 
