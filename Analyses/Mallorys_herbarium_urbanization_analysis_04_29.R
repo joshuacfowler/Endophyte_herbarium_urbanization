@@ -257,6 +257,19 @@ clim_land_cor$geometry <- NULL
 clim_land_cor <- cor(clim_land_cor)
 clim_land_cor_plot <- corrplot(clim_land_cor, method = "number") 
 
+########################################## climate scatterplots #################################
+
+par(mfrow= c(3,3))
+
+temp_nit <- plot (endo_herb$tmean ~ endo_herb$TIN_mean)
+temp_ag <- plot(endo_herb$tmean ~ endo_herb$PercentAg)
+temp_urb <- plot(endo_herb$tmean ~ endo_herb$PercentUrban)
+temp_ppt <- plot(endo_herb$tmean ~ endo_herb$ppt)
+
+ppt_nit <- plot(endo_herb$ppt ~endo_herb$TIN_mean)
+ppt_ag <- plot(endo_herb$ppt ~ endo_herb$PercentAg)
+ppt_urb <- plot(endo_herb$ppt ~ endo_herb$PercentUrban)
+
 
 # plotting the relationship between percentag and percenturban
 
