@@ -386,7 +386,9 @@ summary_endo_herb <- endo_herb %>%
   group_by(species) %>% 
   dplyr::summarize(n(),
             avg_seed = mean(seed_scored, na.rm = T),
-            avg_month = mode(as.numeric(month)))
+            avg_month = mode(as.numeric(month)),
+            min_year = min(year),
+            max_year = max(year))
 
 
 # generating summary of collections
@@ -394,6 +396,14 @@ collection_summary <- endo_herb %>%
   filter(score_number == 1) %>% 
   group_by(Herb_code, Spp_code) %>% 
   summarize(count = n())
+
+# summary of specimens without counties
+
+city_coords_endo_herb <- endo_herb %>% 
+  filter(score_number == 1) %>% 
+  filter(!is.na(Endo_status_liberal)) %>% 
+  filter(is.na(Municipality))
+
 
 #######################################################################################
 ################################## Mean endo status by species###########################
@@ -684,10 +694,6 @@ s_components.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*std_TIN + Spp_cod
 
 
 
-# s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*NO3_mean, model = "fixed")+
-#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-#   space_int(coords, model = spde) 
 
 
 s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_ag + Spp_code*std_urb + Spp_code*std_TIN, model = "fixed")+
@@ -789,47 +795,47 @@ fit.4 <- bru(s_components.4,
              )
 )
 
-fit.tin <- bru(s_components.tin,
-                   like(
-                     formula = s_formula,
-                     family = "binomial",
-                     Ntrials = 1,
-                     data = data
-                   ),
-                   options = list(
-                     control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-                     control.inla = list(int.strategy = "eb"),
-                     verbose = TRUE
-                   )
-)
+# fit.tin <- bru(s_components.tin,
+#                    like(
+#                      formula = s_formula,
+#                      family = "binomial",
+#                      Ntrials = 1,
+#                      data = data
+#                    ),
+#                    options = list(
+#                      control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
+#                      control.inla = list(int.strategy = "eb"),
+#                      verbose = TRUE
+#                    )
+# )
 
-fit.tinyr <- bru(s_components.tinyr,
-             like(
-               formula = s_formula,
-               family = "binomial",
-               Ntrials = 1,
-               data = data
-             ),
-             options = list(
-               control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-               control.inla = list(int.strategy = "eb"),
-               verbose = TRUE
-             )
-)
-
-fit.nh4yr <- bru(s_components.nh4yr,
-                 like(
-                   formula = s_formula,
-                   family = "binomial",
-                   Ntrials = 1,
-                   data = data
-                 ),
-                 options = list(
-                   control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-                   control.inla = list(int.strategy = "eb"),
-                   verbose = TRUE
-                 )
-)
+# fit.tinyr <- bru(s_components.tinyr,
+#              like(
+#                formula = s_formula,
+#                family = "binomial",
+#                Ntrials = 1,
+#                data = data
+#              ),
+#              options = list(
+#                control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
+#                control.inla = list(int.strategy = "eb"),
+#                verbose = TRUE
+#              )
+# )
+# 
+# fit.nh4yr <- bru(s_components.nh4yr,
+#                  like(
+#                    formula = s_formula,
+#                    family = "binomial",
+#                    Ntrials = 1,
+#                    data = data
+#                  ),
+#                  options = list(
+#                    control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
+#                    control.inla = list(int.strategy = "eb"),
+#                    verbose = TRUE
+#                  )
+# )
 
 # fit.5 <- bru(s_components.5,
 #              like(
