@@ -45,11 +45,12 @@ species_names <- c("A. hyemalis", "A. perennans", "E. virginicus")
 
 Mallorypath <- "C:/Users/malpa/OneDrive/Documents/EndoHerbQGIS/"
 Joshpath <- "Analyses/"
-path <- Joshpath
+path <- Mallorypath
 
 
 endo_herb_georef <- read_csv(file = paste0(path, "full_Zonalhist_NLCD_2001_10km.csv")) %>%
   filter(Country != "Canada") %>%
+  filter(Country != "CA") %>%
   mutate(Spp_code = case_when(grepl("AGHY", Sample_id) ~ "AGHY",
                               grepl("ELVI", Sample_id) ~ "ELVI",
                               grepl("AGPE", Sample_id) ~ "AGPE")) %>%
@@ -124,8 +125,9 @@ nitendoherb <- left_join(nit, endo_herb, by = "Sample_id")
 endo_herb <- nitendoherb
 write.csv(endo_herb, file = "EndoHerb_withNitrogen.csv")
 
-endo_herb_10km <- read_csv(file = "~/Dropbox/endophyte_herbarium_urbanization_project/Mallorys_data/EndoHerb_withNitrogen.csv") %>%
-
+#endo_herb_10km <- read_csv(file = "~/Dropbox/endophyte_herbarium_urbanization_project/Mallorys_data/EndoHerb_withNitrogen.csv") %>%
+endo_herb_10km <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/EndoHerb_withNitrogen.csv")%>%
+  
   mutate(sample_temp = Sample_id) %>%
   separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
   mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
@@ -148,7 +150,9 @@ endo_herb_10km <- read_csv(file = "~/Dropbox/endophyte_herbarium_urbanization_pr
 
 
 # dataset with land cover types extracted from 30km radius buffer around points
-endo_herb_30km <- read_csv(file = "~/Dropbox/endophyte_herbarium_urbanization_project/Mallorys_data/EndoHerb_withNitrogen_avgcosize.csv") %>%
+#endo_herb_30km <- read_csv(file = "~/Dropbox/endophyte_herbarium_urbanization_project/Mallorys_data/EndoHerb_withNitrogen_avgcosize.csv") %>%
+endo_herb_30km <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/EndoHerb_withNitrogen_avgcosize.csv") %>%
+
   mutate(sample_temp = Sample_id) %>%
   separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
   mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
@@ -300,7 +304,7 @@ predictor_correlations_spearman <- ggplot(filter(correlations, type == "Spearman
   theme_minimal() +
   theme(axis.text.x = element_text(hjust = 1, angle = 45))
 predictor_correlations <- predictor_correlations_pearson + predictor_correlations_spearman + plot_annotation(tag_levels =  "A") + plot_layout(nrow = 2, guides = "collect")
-ggsave(predictor_correlations, filename = "predictor_correlations.png", width = 6, height = )
+ggsave(predictor_correlations, filename = "predictor_correlations.png", width = 6, height = 8)
 
 # calculating variance inflation factors
 vif.m <- lm(Endo_status_liberal~PercentAg +  PercentUrban + TIN_mean, data = endo_herb)
@@ -613,7 +617,7 @@ mesh_plot <- ggplot() +
   labs(x = "", y = "", color = "Species")+
   theme(legend.text = element_text(face = "italic"))
 # mesh_plot
-# ggsave(mesh_plot, filename = "mesh_plot.png", width = 6, height = 5)
+#ggsave(mesh_plot, filename = "mesh_plot.png", width = 6, height = 5)
 
 
 
@@ -1419,7 +1423,7 @@ nit_yr_trend <- tag_facet(nit_yr_trend, tag_pool =  letters[-(1:6)])
 yr_trend_plot <- ag_yr_trend + urb_yr_trend + nit_yr_trend + plot_layout(ncol = 3) 
 
 
-# yr_trend_plot
+#yr_trend_plot
 
 ggsave(yr_trend_plot, filename = "yr_trend_plot.png", width = 10, height = 8)
 
