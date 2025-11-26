@@ -245,6 +245,30 @@ endo_status_map
 
 # ggsave(endo_status_map, filename = "endo_status_map.png", width = 10, height = 5)
 
+####################################### climate correlations ##################################
+library(corrplot)
+
+climate <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/PRISM_yearly_df.csv")
+endo_herb <- merge(endo_herb, climate, by = c("lon", "lat", "year"))
+
+#select land cover and clim columns for correlation matrix
+clim_land_cor <- endo_herb[, c("TIN_mean", "PercentUrban", "PercentAg", "tmean", "ppt")]
+clim_land_cor$geometry <- NULL
+clim_land_cor <- cor(clim_land_cor)
+clim_land_cor_plot <- corrplot(clim_land_cor, method = "number") 
+
+########################################## climate scatterplots #################################
+
+par(mfrow= c(3,3))
+
+temp_nit <- plot (endo_herb$tmean ~ endo_herb$TIN_mean)
+temp_ag <- plot(endo_herb$tmean ~ endo_herb$PercentAg)
+temp_urb <- plot(endo_herb$tmean ~ endo_herb$PercentUrban)
+temp_ppt <- plot(endo_herb$tmean ~ endo_herb$ppt)
+
+ppt_nit <- plot(endo_herb$ppt ~endo_herb$TIN_mean)
+ppt_ag <- plot(endo_herb$ppt ~ endo_herb$PercentAg)
+ppt_urb <- plot(endo_herb$ppt ~ endo_herb$PercentUrban)
 
 
 # plotting the relationship between percentag and percenturban
