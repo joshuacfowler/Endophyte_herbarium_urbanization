@@ -118,16 +118,17 @@ endo_herb <- endo_herb_georef %>%
   mutate(endo_status_text = case_when(Endo_status_liberal == 0 ~ "E-",
                                       Endo_status_liberal == 1 ~ "E+"))
 #loading in nitrogen data too
-nit <- read.csv(file = "endo_herb_nit.csv") %>%
-  select(Sample_id, NO3_mean, NH4_mean, TIN_mean)
+# nit <- read.csv(file = "endo_herb_nit.csv") %>%
+#   select(Sample_id, NO3_mean, NH4_mean, TIN_mean)
 
-nitendoherb <- left_join(nit, endo_herb, by = "Sample_id")
-endo_herb <- nitendoherb
-write.csv(endo_herb, file = "EndoHerb_withNitrogen.csv")
+nit_avgs <- read.csv(file = "nitrogen_mean_df.csv") %>% 
+  select(lon, lat, mean_TIN, mean_NO3, mean_NH4)
+endo_herb <- left_join(endo_herb, nit_avgs, by = c("lon", "lat"))
 
-#endo_herb_10km <- read_csv(file = "~/Dropbox/endophyte_herbarium_urbanization_project/Mallorys_data/EndoHerb_withNitrogen.csv") %>%
-endo_herb_10km <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/EndoHerb_withNitrogen.csv")%>%
-  
+
+nit_yearly <- read.csv(file = "nitrogen_yearly_df.csv") %>% 
+  select(lon, lat, year, TIN, NO3, NH4)
+endo_herb <- left_join(endo_herb, nit_yearly, by = c("lon", "lat", "year")) %>% 
   mutate(sample_temp = Sample_id) %>%
   separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
   mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
@@ -136,43 +137,66 @@ endo_herb_10km <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_h
   mutate(species = case_when(spp_code == "AGHY" ~ "A. hyemalis",
                              spp_code == "AGPE" ~ "A. perennans",
                              spp_code == "ELVI" ~ "E. virginicus")) %>%
-  mutate(std_year = (year-mean(year, na.rm = T)),
-         std_NO3 = (NO3_mean - mean(NO3_mean, na.rm = T)),
-         std_NH4 = (NH4_mean - mean(NH4_mean, na.rm = T)),
-         std_TIN = (TIN_mean - mean(TIN_mean, na.rm = T)),
-         std_urb = (PercentUrban - mean(PercentUrban, na.rm = T)),
-         std_ag = (PercentAg - mean(PercentAg, na.rm = T))) %>%  # I am mean centering but not scaling by standard deviation to preserve units for interpretation of the parameter values
   filter(scorer_id != "Scorer26") %>% 
   filter(!is.na(Endo_status_liberal)) %>%
   filter(!is.na(spp_code)) %>%
   filter(!is.na(lon) & !is.na(year)) %>%
-  filter(!is.na(PercentAg), !is.na(NO3_mean)) 
+  filter(!is.na(PercentAg), !is.na(mean_NO3)) 
+
+
+
+# nitendoherb <- left_join(nit, endo_herb, by = "Sample_id")
+# endo_herb <- nitendoherb
+# write.csv(endo_herb, file = "EndoHerb_withNitrogen.csv")
+
+#endo_herb_10km <- read_csv(file = "~/Dropbox/endophyte_herbarium_urbanization_project/Mallorys_data/EndoHerb_withNitrogen.csv") %>%
+# endo_herb_10km <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/EndoHerb_withNitrogen.csv")%>%
+  
+  # mutate(sample_temp = Sample_id) %>%
+  # separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
+  # mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
+  #                                            spp_code == "AGPE" ~ "2",
+  #                                            spp_code == "ELVI" ~ "3"))) %>%
+  # mutate(species = case_when(spp_code == "AGHY" ~ "A. hyemalis",
+  #                            spp_code == "AGPE" ~ "A. perennans",
+  #                            spp_code == "ELVI" ~ "E. virginicus")) %>%
+  # mutate(std_year = (year-mean(year, na.rm = T)),
+  #        std_NO3 = (NO3_mean - mean(NO3_mean, na.rm = T)),
+  #        std_NH4 = (NH4_mean - mean(NH4_mean, na.rm = T)),
+  #        std_TIN = (TIN_mean - mean(TIN_mean, na.rm = T)),
+  #        std_urb = (PercentUrban - mean(PercentUrban, na.rm = T)),
+  #        std_ag = (PercentAg - mean(PercentAg, na.rm = T))) %>%  # I am mean centering but not scaling by standard deviation to preserve units for interpretation of the parameter values
+  # filter(scorer_id != "Scorer26") %>% 
+  # filter(!is.na(Endo_status_liberal)) %>%
+  # filter(!is.na(spp_code)) %>%
+  # filter(!is.na(lon) & !is.na(year)) %>%
+  # filter(!is.na(PercentAg), !is.na(NO3_mean)) 
 
 
 # dataset with land cover types extracted from 30km radius buffer around points
 #endo_herb_30km <- read_csv(file = "~/Dropbox/endophyte_herbarium_urbanization_project/Mallorys_data/EndoHerb_withNitrogen_avgcosize.csv") %>%
-endo_herb_30km <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/EndoHerb_withNitrogen_avgcosize.csv") %>%
+# endo_herb_30km <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/EndoHerb_withNitrogen_avgcosize.csv") %>%
+# 
+#   mutate(sample_temp = Sample_id) %>%
+#   separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
+#   mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
+#                                              spp_code == "AGPE" ~ "2",
+#                                              spp_code == "ELVI" ~ "3"))) %>%
+#   mutate(species = case_when(spp_code == "AGHY" ~ "A. hyemalis",
+#                              spp_code == "AGPE" ~ "A. perennans",
+#                              spp_code == "ELVI" ~ "E. virginicus")) %>%
+#   mutate(std_year = (year-mean(year, na.rm = T)),
+#          # std_nit = (NO3_mean - mean(NO3_mean, na.rm = T))/sd(NO3_mean, na.rm = T),
+#          std_urb_30km = (PercentUrban - mean(PercentUrban, na.rm = T)),
+#          std_ag_30km = (PercentAg - mean(PercentAg, na.rm = T))) %>%  # I am mean centering but not scaling by standard deviation to preserve units for interpretation of the parameter values
+#   filter(scorer_id != "Scorer26") %>% 
+#   filter(!is.na(Endo_status_liberal)) %>%
+#   filter(!is.na(spp_code)) %>%
+#   filter(!is.na(lon) & !is.na(year)) %>%
+#   filter(!is.na(PercentAg), !is.na(NO3_mean)) %>% 
+#   select(Institution_specimen_id, Sample_id, scorer_id, new_id, std_urb_30km, std_ag_30km)
 
-  mutate(sample_temp = Sample_id) %>%
-  separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
-  mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
-                                             spp_code == "AGPE" ~ "2",
-                                             spp_code == "ELVI" ~ "3"))) %>%
-  mutate(species = case_when(spp_code == "AGHY" ~ "A. hyemalis",
-                             spp_code == "AGPE" ~ "A. perennans",
-                             spp_code == "ELVI" ~ "E. virginicus")) %>%
-  mutate(std_year = (year-mean(year, na.rm = T)),
-         # std_nit = (NO3_mean - mean(NO3_mean, na.rm = T))/sd(NO3_mean, na.rm = T),
-         std_urb_30km = (PercentUrban - mean(PercentUrban, na.rm = T)),
-         std_ag_30km = (PercentAg - mean(PercentAg, na.rm = T))) %>%  # I am mean centering but not scaling by standard deviation to preserve units for interpretation of the parameter values
-  filter(scorer_id != "Scorer26") %>% 
-  filter(!is.na(Endo_status_liberal)) %>%
-  filter(!is.na(spp_code)) %>%
-  filter(!is.na(lon) & !is.na(year)) %>%
-  filter(!is.na(PercentAg), !is.na(NO3_mean)) %>% 
-  select(Institution_specimen_id, Sample_id, scorer_id, new_id, std_urb_30km, std_ag_30km)
-
-endo_herb <- endo_herb_10km %>% left_join(endo_herb_30km)
+# endo_herb <- endo_herb_10km %>% left_join(endo_herb_30km)
 # updating the collector labels
 
 # Creating scorer and collector levels
