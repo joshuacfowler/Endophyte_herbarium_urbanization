@@ -103,11 +103,11 @@ yearly_endo <- read_csv(file = paste0(path,"endo_herb_yearly_nlcd.csv"))%>%
 
 
 
-endo_herb_georef <- left_join(endo_herb_georef, yearly_endo, by = "Sample_id")
+endo_herb_georef1 <- left_join(endo_herb_georef, yearly_endo, by = "Sample_id")
 
  
 # Doing some filtering to remove NA's and some data points that probably aren't accurate species id's
-endo_herb <- endo_herb_georef %>%
+endo_herb_merge1 <- endo_herb_georef1 %>%
   filter(!is.na(Endo_status_liberal)) %>%
   filter(!is.na(Spp_code)) %>%
   filter(!is.na(lon) & !is.na(year)) %>%
@@ -116,19 +116,22 @@ endo_herb <- endo_herb_georef %>%
   mutate(year_bin = case_when(year<1970 ~ "pre-1970",
                               year>=1970 ~ "post-1970")) %>%
   mutate(endo_status_text = case_when(Endo_status_liberal == 0 ~ "E-",
-                                      Endo_status_liberal == 1 ~ "E+"))
+                                      Endo_status_liberal == 1 ~ "E+")) 
 #loading in nitrogen data too
 # nit <- read.csv(file = "endo_herb_nit.csv") %>%
 #   select(Sample_id, NO3_mean, NH4_mean, TIN_mean)
 
 nit_avgs <- read.csv(file = paste0(path, "nitrogen_mean_df.csv")) %>% 
-  select(lon, lat, mean_TIN, mean_NO3, mean_NH4)
-endo_herb <- left_join(endo_herb, nit_avgs, by = c("lon", "lat"))
+  select(lon, lat, buffer, mean_TIN, mean_NO3, mean_NH4) %>% 
+  pivot_wider(id_cols = c(lon, lat), names_from = c("buffer"), values_from = c("mean_TIN", "mean_NO3", "mean_NH4"))
+endo_herb_merge2 <- left_join(endo_herb_merge1, nit_avgs, by = c("lon", "lat"))
 
 
 nit_yearly <- read.csv(file = paste0(path,"nitrogen_yearly_df.csv")) %>% 
-  select(lon, lat, year, TIN, NO3, NH4)
-endo_herb <- left_join(endo_herb, nit_yearly, by = c("lon", "lat", "year")) %>% 
+  select(lon, lat, year, buffer, TIN, NO3, NH4) %>% 
+  pivot_wider(id_cols = c(lon, lat, year), names_from = c("buffer"), values_from = c("TIN", "NO3", "NH4"))
+
+endo_herb <- left_join(endo_herb_merge2, nit_yearly, by = c("lon", "lat", "year")) %>% 
   mutate(sample_temp = Sample_id) %>%
   separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
   mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
@@ -141,7 +144,7 @@ endo_herb <- left_join(endo_herb, nit_yearly, by = c("lon", "lat", "year")) %>%
   filter(!is.na(Endo_status_liberal)) %>%
   filter(!is.na(spp_code)) %>%
   filter(!is.na(lon) & !is.na(year)) %>%
-  filter(!is.na(PercentAg), !is.na(mean_NO3)) 
+  filter(!is.na(PercentAg), !is.na(mean_NO3_10km)) 
 
 
 
@@ -272,11 +275,13 @@ endo_status_map
 ####################################### climate correlations ##################################
 library(corrplot)
 
-climate <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/PRISM_yearly_df.csv")
+climate <- read_csv(file = paste0(path,"PRISM_yearly_df.csv")) %>% 
+  pivot_wider(id_cols = c(lon, lat, year), names_from = c("buffer"), values_from = c("tmean", "ppt"))
+
 endo_herb <- merge(endo_herb, climate, by = c("lon", "lat", "year"))
 
 #select land cover and clim columns for correlation matrix
-clim_land_cor <- endo_herb[, c("TIN_mean", "PercentUrban", "PercentAg", "tmean", "ppt")]
+clim_land_cor <- endo_herb[, c("mean_TIN", "PercentUrban", "PercentAg", "tmean", "ppt")]
 clim_land_cor$geometry <- NULL
 clim_land_cor <- cor(clim_land_cor)
 clim_land_cor_plot <- corrplot(clim_land_cor, method = "number") 
@@ -285,7 +290,7 @@ clim_land_cor_plot <- corrplot(clim_land_cor, method = "number")
 
 par(mfrow= c(3,3))
 
-temp_nit <- plot (endo_herb$tmean ~ endo_herb$TIN_mean)
+temp_nit <- plot (endo_herb$tmean ~ endo_herb$mean_TIN)
 temp_ag <- plot(endo_herb$tmean ~ endo_herb$PercentAg)
 temp_urb <- plot(endo_herb$tmean ~ endo_herb$PercentUrban)
 temp_ppt <- plot(endo_herb$tmean ~ endo_herb$ppt)
@@ -355,12 +360,16 @@ predictor_correlations <- predictor_correlations_pearson + predictor_correlation
 ggsave(predictor_correlations, filename = "predictor_correlations.png", width = 6, height = 8)
 
 # calculating variance inflation factors
-vif.m <- lm(Endo_status_liberal~PercentAg +  PercentUrban + TIN_mean, data = endo_herb)
+vif.m <- lm(Endo_status_liberal~PercentAg +  PercentUrban + mean_TIN, data = endo_herb)
+vif.m <- lm(Endo_status_liberal~PercentAg +  PercentUrban + mean_TIN + tmean + ppt, data = endo_herb)
+
 vif <- car::vif(vif.m, type="terms")
 vif_values <- tibble("vif" = vif, "term" = names(vif)) %>% 
   mutate(Predictor = case_when(term == "PercentAg" ~ "Percent Agr.",
                                term == "PercentUrban" ~ "Percent Urb.",
-                               term == "TIN_mean" ~ "Total Nit."))
+                               term == "mean_TIN" ~ "Total Nit.",
+                               term == "tmean" ~ "MAT",
+                               term == "ppt" ~ "PPT"))
 
 vif_plot <- ggplot(vif_values)+
   geom_point(aes(x = Predictor, y = vif))+
