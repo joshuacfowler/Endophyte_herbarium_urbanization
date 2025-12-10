@@ -45,7 +45,7 @@ species_names <- c("A. hyemalis", "A. perennans", "E. virginicus")
 
 Mallorypath <- "C:/Users/malpa/OneDrive/Documents/EndoHerbQGIS/"
 Joshpath <- "Analyses/"
-path <- Mallorypath
+path <- Joshpath
 
 
 endo_herb_georef <- read_csv(file = paste0(path, "full_Zonalhist_NLCD_2001_10km.csv")) %>%
@@ -75,7 +75,7 @@ endo_herb_georef <- read_csv(file = paste0(path, "full_Zonalhist_NLCD_2001_10km.
          PercentAg = TotalAg/TotalPixels * 100)
 
 #fixing column names in yearly_endo and filtering
-yearly_endo <- read_csv(file = "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/endo_herb_yearly_nlcd.csv")%>%
+yearly_endo <- read_csv(file = paste0(path,"endo_herb_yearly_nlcd.csv"))%>%
   filter(Country != "Canada") %>%
   mutate(Spp_code = case_when(grepl("AGHY", Sample_id) ~ "AGHY",
                               grepl("ELVI", Sample_id) ~ "ELVI",
@@ -121,12 +121,12 @@ endo_herb <- endo_herb_georef %>%
 # nit <- read.csv(file = "endo_herb_nit.csv") %>%
 #   select(Sample_id, NO3_mean, NH4_mean, TIN_mean)
 
-nit_avgs <- read.csv(file = "nitrogen_mean_df.csv") %>% 
+nit_avgs <- read.csv(file = paste0(path, "nitrogen_mean_df.csv")) %>% 
   select(lon, lat, mean_TIN, mean_NO3, mean_NH4)
 endo_herb <- left_join(endo_herb, nit_avgs, by = c("lon", "lat"))
 
 
-nit_yearly <- read.csv(file = "nitrogen_yearly_df.csv") %>% 
+nit_yearly <- read.csv(file = paste0(path,"nitrogen_yearly_df.csv")) %>% 
   select(lon, lat, year, TIN, NO3, NH4)
 endo_herb <- left_join(endo_herb, nit_yearly, by = c("lon", "lat", "year")) %>% 
   mutate(sample_temp = Sample_id) %>%
