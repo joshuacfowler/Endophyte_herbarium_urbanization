@@ -684,7 +684,7 @@ mesh_plot <- ggplot() +
   labs(x = "", y = "", color = "Species")+
   theme(legend.text = element_text(face = "italic"))
 # mesh_plot
-ggsave(mesh_plot, filename = "mesh_plot.png", width = 6, height = 5)
+# ggsave(mesh_plot, filename = "mesh_plot.png", width = 6, height = 5)
 
 
 
@@ -737,12 +737,24 @@ s_components.y.rfx <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km + Spp_co
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
 
-
-s_components.y.rfx <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km + Spp_code*PercentAg + Spp_code*PercentUrban, model = "fixed")+
-  year(year, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$year)), group=Spp_index, group_mapper = bru_mapper_index(max(data$Spp_index)), hyper = list(pc_prec)) +
+s_components.climate <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*tmean_10km + Spp_code*ppt_10km, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
+
+s_components <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km + Spp_code*PercentAg + Spp_code*PercentUrban, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+
+
+
+s_components.year <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*year*mean_TIN_10km + Spp_code*year*PercentAg + Spp_code*year*PercentUrban, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+
+
 
 
 
@@ -837,6 +849,48 @@ fit.y.rfx <- bru(s_components.y.rfx,
                verbose = TRUE
              )
 )
+fit.climate <- bru(s_components.climate,
+                   like(
+                     formula = s_formula,
+                     family = "binomial",
+                     Ntrials = 1,
+                     data = data
+                   ),
+                   options = list(
+                     control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
+                     control.inla = list(int.strategy = "eb"),
+                     verbose = TRUE
+                   )
+)
+fit.year <- bru(s_components.year,
+                   like(
+                     formula = s_formula,
+                     family = "binomial",
+                     Ntrials = 1,
+                     data = data
+                   ),
+                   options = list(
+                     control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
+                     control.inla = list(int.strategy = "eb"),
+                     verbose = TRUE
+                   )
+)
+
+
+fit.climate <- bru(s_components.climate,
+                 like(
+                   formula = s_formula,
+                   family = "binomial",
+                   Ntrials = 1,
+                   data = data
+                 ),
+                 options = list(
+                   control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
+                   control.inla = list(int.strategy = "eb"),
+                   verbose = TRUE
+                 )
+)
+
 
 
 
@@ -925,6 +979,10 @@ fit.4 <- bru(s_components.4,
 #              )
 # )
 fit.y.rfx$dic$dic
+fit$dic$dic
+fit.year$dic$dic
+
+fit.climate$dic$dic
 
 fit.1$dic$dic
 fit.2$dic$dic
@@ -933,6 +991,10 @@ fit.4$dic$dic
 fit.5$dic$dic
 
 fit.y.rfx$mode$mode.status # a 0 or low value indicates "convergence"
+fit$mode$mode.status # a 0 or low value indicates "convergence"
+fit.year$mode$mode.status # a 0 or low value indicates "convergence"
+fit.climate$mode$mode.status # a 0 or low value indicates "convergence"
+
 fit.3$mode$mode.status # a 0 or low value indicates "convergence"
 fit.4$mode$mode.status # a 0 or low value indicates "convergence"
 
@@ -1286,7 +1348,7 @@ preddata <- bind_rows(preddata_aghy, preddata_agpe, preddata_elvi) %>%
 year.nit.pred <- predict(
   fit.y.rfx,
   newdata = preddata,
-  formula = ~ invlogit(fixed + year), #+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  formula = ~ invlogit( year), #+ collector_eval(collector_index) + scorer_eval(scorer_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
   n.samples = 100)  
 
