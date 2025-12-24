@@ -1013,6 +1013,141 @@ ggsave(yr_trend_plot, filename = "Plots/yr_trend_plot.png", width = 10, height =
 
 
 
+################################################################################################################################
+##########  Plotting the posteriors from the model without year effect ###############
+################################################################################################################################
+
+# param_names <- fit.4$summary.random$fixed$ID
+param_names <- fit.year$summary.random$fixed$ID
+
+n_draws <- 1000
+
+# we can sample values from the join posteriors of the parameters with the addition of "_latent" to the parameter name
+posteriors <- generate(
+  fit.year,
+  formula = ~ fixed_latent,
+  n.samples = n_draws) 
+rownames(posteriors) <- param_names
+colnames(posteriors) <- c( paste0("iter",1:n_draws))
+
+
+posteriors_df <- as_tibble(t(posteriors), rownames = "iteration")
+
+
+
+# Calculate the effects of the predictor, given that the reference level is for AGHY
+effects_df <- posteriors_df %>% 
+  mutate(INT.AGHY = Spp_codeAGHY,
+         INT.AGPE = Spp_codeAGPE,
+         INT.ELVI = Spp_codeELVI,
+         NIT.AGHY = mean_TIN_10km,
+         NIT.AGPE = mean_TIN_10km+`Spp_codeAGPE:mean_TIN_10km`,
+         NIT.ELVI = mean_TIN_10km+`Spp_codeELVI:mean_TIN_10km`,
+         AG.AGHY = PercentAg,
+         AG.AGPE = PercentAg+`Spp_codeAGPE:PercentAg`,
+         AG.ELVI = PercentAg+`Spp_codeELVI:PercentAg`,
+         URB.AGHY = PercentUrban,
+         URB.AGPE = PercentUrban+`Spp_codeAGPE:PercentUrban`,
+         URB.ELVI = PercentUrban+`Spp_codeELVI:PercentUrban`,
+         NITxAG.AGHY = `mean_TIN_10km:PercentAg`,
+         NITxAG.AGPE = `mean_TIN_10km:PercentAg` + `Spp_codeAGPE:mean_TIN_10km:PercentAg`,
+         NITxAG.ELVI = `mean_TIN_10km:PercentAg` + `Spp_codeELVI:mean_TIN_10km:PercentAg`,
+         NITxURB.AGHY= `mean_TIN_10km:PercentUrban`,
+         NITxURB.AGPE = `mean_TIN_10km:PercentUrban` + `Spp_codeAGPE:mean_TIN_10km:PercentUrban`,
+         NITxURB.ELVI = `mean_TIN_10km:PercentUrban` + `Spp_codeELVI:mean_TIN_10km:PercentUrban`,
+         AGxURB.AGHY= `PercentAg:PercentUrban`,
+         AGxURB.AGPE = `PercentAg:PercentUrban` + `Spp_codeAGPE:PercentAg:PercentUrban`,
+         AGxURB.ELVI = `PercentAg:PercentUrban` + `Spp_codeELVI:PercentAg:PercentUrban`,
+         NITxAGxURB.AGHY= `mean_TIN_10km:PercentAg:PercentUrban`,
+         NITxAGxURB.AGPE= `mean_TIN_10km:PercentAg:PercentUrban` + `Spp_codeAGPE:mean_TIN_10km:PercentAg:PercentUrban`,
+         NITxAGxURB.ELVI= `mean_TIN_10km:PercentAg:PercentUrban` + `Spp_codeELVI:mean_TIN_10km:PercentAg:PercentUrban`,
+         YEAR.AGHY = `year`,
+         YEAR.AGPE = `year`+`Spp_codeAGPE:year`,
+         YEAR.ELVI = `year`+`Spp_codeELVI:year`, 
+         YEARxAG.AGHY = `year:PercentAg`,
+         YEARxAG.AGPE = `year:PercentAg`+`Spp_codeAGPE:year:PercentAg`,
+         YEARxAG.ELVI = `year:PercentAg`+`Spp_codeELVI:year:PercentAg`,  
+         YEARxURB.AGHY = `year:PercentUrban`,
+         YEARxURB.AGPE = `year:PercentUrban`+`Spp_codeAGPE:year:PercentUrban`,
+         YEARxURB.ELVI = `year:PercentUrban`+`Spp_codeELVI:year:PercentUrban`, 
+         YEARxNIT.AGHY = `year:mean_TIN_10km`,
+         YEARxNIT.AGPE = `year:mean_TIN_10km`+`Spp_codeAGPE:year:mean_TIN_10km`,
+         YEARxNIT.ELVI = `year:mean_TIN_10km`+`Spp_codeELVI:year:mean_TIN_10km`, 
+         YEARxNITxAG.AGHY = `year:mean_TIN_10km:PercentAg`,
+         YEARxNITxAG.AGPE = `year:mean_TIN_10km:PercentAg`+`Spp_codeAGPE:year:mean_TIN_10km:PercentAg`,
+         YEARxNITxAG.ELVI = `year:mean_TIN_10km:PercentAg`+`Spp_codeELVI:year:mean_TIN_10km:PercentAg`, 
+         YEARxNITxURB.AGHY = `year:mean_TIN_10km:PercentUrban`,
+         YEARxNITxURB.AGPE = `year:mean_TIN_10km:PercentUrban`+`Spp_codeAGPE:year:mean_TIN_10km:PercentUrban`,
+         YEARxNITxURB.ELVI = `year:mean_TIN_10km:PercentUrban`+`Spp_codeELVI:year:mean_TIN_10km:PercentUrban`, 
+         YEARxAGxURB.AGHY = `year:PercentAg:PercentUrban`,
+         YEARxAGxURB.AGPE = `year:PercentAg:PercentUrban`+`Spp_codeAGPE:year:PercentAg:PercentUrban`,
+         YEARxAGxURB.ELVI = `year:PercentAg:PercentUrban`+`Spp_codeELVI:year:PercentAg:PercentUrban`, 
+         YEARxNITxAGxURB.AGHY = `year:mean_TIN_10km:PercentAg:PercentUrban`,
+         YEARxNITxAGxURB.AGPE = `year:mean_TIN_10km:PercentAg:PercentUrban`+`Spp_codeAGPE:year:mean_TIN_10km:PercentAg:PercentUrban`,
+         YEARxNITxAGxURB.ELVI = `year:mean_TIN_10km:PercentAg:PercentUrban`+`Spp_codeELVI:year:mean_TIN_10km:PercentAg:PercentUrban`) %>% 
+  select(-all_of(param_names)) %>% 
+  pivot_longer( cols = -c(iteration), names_to = "param") %>% 
+  mutate(model = "No Year") %>% 
+  mutate(spp_label = sub(".*\\.", "", param),
+         param_label = sub("\\..*","", param)) %>% 
+  mutate(param_f = factor(case_when(param_label == "INT" ~ "Intercept",
+                                    param_label == "AG" ~ "Agric. Cover",
+                                    param_label == "URB" ~ "Urban Cover",
+                                    param_label == "NIT" ~ "Nit. Dep.",
+                                    param_label == "NITxAG" ~ "Nit. X Agr.",
+                                    param_label == "NITxURB" ~ "Nit. X Urb.",
+                                    param_label == "AGxURB" ~ "Agr. X Urb.",
+                                    param_label == "NITxAGxURB" ~ "Nit. X Agr. X Urb.",
+                                    param_label == "YEAR" ~ "Year",
+                                    param_label == "YEARxNIT" ~ "Year X Nit.",
+                                    param_label == "YEARxAG" ~ "Year X Agr.",
+                                    param_label == "YEARxURB" ~ "Year X Urb.",
+                                    param_label == "YEARxNITxAG" ~ "Year X Nit. X Agr.",
+                                    param_label == "YEARxNITxURB" ~ "Year X Nit. X Urb.",
+                                    param_label == "YEARxAGxURB" ~ "Year X Agr. X Urb.",
+                                    param_label == "YEARxNITxAGxURB" ~ "Year X Nit. X Agr. X Urb."), levels = c("Intercept", "Agric. Cover", "Urban Cover", "Nit. Dep.", 
+                                                                                                                "Nit. X Agr.", "Nit. X Urb.", "Agr. X Urb.", "Nit. X Agr. X Urb.",
+                                                                                                                "Year", "Year X Nit.", "Year X Agr.", "Year X Urb.", "Year X Nit. X Agr.", "Year X Nit. X Urb.", "Year X Agr. X Urb.", "Year X Nit. X Agr. X Urb.")),
+         spp_f = factor(case_when(spp_label == "ELVI" ~ "E. virginicus", spp_label == "AGPE" ~ "A. perennans", spp_label == "AGHY" ~ "A. hyemalis"),
+                        levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus")))
+  )
+
+
+
+
+
+posterior_hist <- ggplot(effects_df)+
+  stat_halfeye(aes(x = value, y = spp_f, fill  = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
+  
+  # stat_halfeye(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
+  # stat_histinterval(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, alpha = .6)+
+  # geom_point(data = posteriors_summary, aes(x = mean, y = spp_label, color = spp_label))+
+  # geom_linerange(data = posteriors_summary, aes(xmin = lwr, xmax = upr, y = spp_label, color = spp_label))+
+  
+  geom_vline(xintercept = 0)+
+  facet_wrap(~param_f, scales = "free_x", nrow = 4)+
+  labs(x = "Posterior Est.", y = "Species")+
+  guides(fill = "none")+
+  scale_color_manual(values = species_colors)+
+  scale_fill_manual(values = species_colors)+
+  scale_x_continuous(labels = scales::label_number(), guide = guide_axis(check.overlap = TRUE))+
+  theme_bw() + theme(axis.text.y = element_text(face = "italic"),
+                     axis.text.x = element_text(size = rel(.8)))
+
+# posterior_hist
+ggsave(posterior_hist, filename = "Plots/posterior_hist_yearmodel.png", width = 9, height = 5)
+
+
+
+
+effects_summary <- effects_df %>% 
+  group_by(param, param_label, spp_label) %>% 
+  summarize(mean = mean(value), 
+            lwr = quantile(value, .025),
+            upr = quantile(value, .975),
+            prob_pos = sum(value>0)/1000,
+            prob_neg = 1-prob_pos)
+# write.csv(effects_summary, file = "Posterior_prob_results.csv")
 
 
 
