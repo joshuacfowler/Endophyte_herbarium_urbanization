@@ -1135,7 +1135,7 @@ posterior_hist <- ggplot(effects_df)+
                      axis.text.x = element_text(size = rel(.8)))
 
 # posterior_hist
-ggsave(posterior_hist, filename = "Plots/posterior_hist_yearmodel.png", width = 9, height = 5)
+ggsave(posterior_hist, filename = "Plots/posterior_hist_yearmodel.png", width = 10, height = 9)
 
 
 
@@ -1151,4 +1151,133 @@ effects_summary <- effects_df %>%
 
 
 
+
+
+################################################################################################################################
+##########  # Trying out a different plot of trends to visualize the interactin terms better ######
+################################################################################################################################
+
+quantile_summary <- data %>% 
+  group_by(Spp_code) %>% 
+  summarize(min_year = min(year),
+            max_year = max(year),
+            min_ag = min(PercentAg),
+            max_ag = max(PercentAg),
+            min_urb = min(PercentUrban),
+            max_urb = max(PercentUrban),
+            min_nit = min(mean_TIN_10km),
+            max_nit = max(mean_TIN_10km))
+
+# agr. by urban interaction
+preddata.aghy <- expand.grid(Spp_code = "AGHY",
+                             year = c(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_year, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_year),
+                             PercentAg = seq(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_ag, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_ag, length.out = 10),
+                             PercentUrban = seq(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_urb, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_urb, length.out = 10),
+                             mean_TIN_10km = 0)
+
+preddata.agpe <- expand.grid(Spp_code = "AGPE",
+                             year = c(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_year, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_year),
+                             PercentAg = seq(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_ag, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_ag, length.out = 10),
+                             PercentUrban = seq(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_urb, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_urb, length.out = 10),
+                             mean_TIN_10km = 0)
+
+preddata.elvi <- expand.grid(Spp_code = "ELVI",
+                             year = c(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_year, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_year),
+                             PercentAg = seq(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_ag, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_ag, length.out = 10),
+                             PercentUrban = seq(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_urb, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_urb, length.out = 10),
+                             mean_TIN_10km = 0)
+
+preddata <- bind_rows(preddata.aghy, preddata.agpe, preddata.elvi) %>% 
+  mutate(collector_index = 9999, scorer_index = 9999,
+         species = case_when(Spp_code == "AGHY" ~ species_names[1],
+                             Spp_code == "AGPE" ~ species_names[2],
+                             Spp_code == "ELVI" ~ species_names[3]),
+         year_label = case_when(year >=0 ~ "max_year",
+                               year < 0 ~ "min_year"))
+
+
+# gennerating predictiion
+year.pred <- predict(
+  fit.year,
+  newdata = preddata,
+  formula = ~ invlogit(fixed),#+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
+  n.samples = 100) %>% 
+  mutate(year = year + data_summary$year,
+         PercentUrban = PercentUrban + data_summary$PercentUrban,
+         PercentAg= PercentAg + data_summary$PercentAg,
+         mean_TIN_10km= mean_TIN_10km + data_summary$mean_TIN_10km)
+
+year_diff <- year.pred %>% 
+  select(Spp_code, species, year, year_label, PercentAg, PercentUrban, mean_TIN_10km, mean) %>% 
+  pivot_wider(id_cols = c(Spp_code, species, PercentAg, PercentUrban, mean_TIN_10km), names_from = year_label, values_from = mean, names_prefix = "pred.") %>% 
+  mutate(diff = pred.max_year - pred.min_year)
+
+
+
+ag_urb_plot <- ggplot(year_diff)+
+  geom_raster(aes(x = PercentAg, y = PercentUrban, fill = diff )) +
+  geom_point(data = endo_herb, aes(x = PercentAg,y = PercentUrban), alpha = .1)+
+  facet_wrap(~species)+
+  scale_fill_viridis_c()+
+  theme_classic()
+
+
+
+
+
+# agr. by urban interaction
+preddata.aghy <- expand.grid(Spp_code = "AGHY",
+                             year = c(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_year, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_year),
+                             PercentAg = seq(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_ag, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_ag, length.out = 10),
+                             PercentUrban = 0,
+                             mean_TIN_10km = seq(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_nit, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_nit, length.out = 10))
+
+preddata.agpe <- expand.grid(Spp_code = "AGPE",
+                             year = c(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_year, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_year),
+                             PercentAg = seq(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_ag, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_ag, length.out = 10),
+                             PercentUrban = 0,
+                             mean_TIN_10km = seq(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_nit, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_nit, length.out = 10))
+
+preddata.elvi <- expand.grid(Spp_code = "ELVI",
+                             year = c(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_year, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_year),
+                             PercentAg = seq(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_ag, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_ag, length.out = 10),
+                             PercentUrban = 0,
+                             mean_TIN_10km = seq(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_nit, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_nit, length.out = 10))
+
+preddata <- bind_rows(preddata.aghy, preddata.agpe, preddata.elvi) %>% 
+  mutate(collector_index = 9999, scorer_index = 9999,
+         species = case_when(Spp_code == "AGHY" ~ species_names[1],
+                             Spp_code == "AGPE" ~ species_names[2],
+                             Spp_code == "ELVI" ~ species_names[3]),
+         year_label = case_when(year >=0 ~ "max_year",
+                                year < 0 ~ "min_year"))
+
+
+# gennerating predictiion
+year.pred <- predict(
+  fit.year,
+  newdata = preddata,
+  formula = ~ invlogit(fixed),#+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
+  n.samples = 100) %>% 
+  mutate(year = year + data_summary$year,
+         PercentUrban = PercentUrban + data_summary$PercentUrban,
+         PercentAg= PercentAg + data_summary$PercentAg,
+         mean_TIN_10km= mean_TIN_10km + data_summary$mean_TIN_10km)
+
+year_diff <- year.pred %>% 
+  select(Spp_code, species, year, year_label, PercentAg, PercentUrban, mean_TIN_10km, mean) %>% 
+  pivot_wider(id_cols = c(Spp_code, species, PercentAg, PercentUrban, mean_TIN_10km), names_from = year_label, values_from = mean, names_prefix = "pred.") %>% 
+  mutate(diff = pred.max_year - pred.min_year)
+
+
+
+ag_nit_plot <- ggplot(year_diff)+
+  geom_raster(aes(x = mean_TIN_10km, y = PercentAg, fill = diff )) +
+  geom_point(data = endo_herb, aes(x = mean_TIN_10km,y = PercentAg), alpha = .1)+
+  facet_wrap(~species)+
+  scale_fill_viridis_c()+
+  theme_classic()
+ag_nit_plot
 
