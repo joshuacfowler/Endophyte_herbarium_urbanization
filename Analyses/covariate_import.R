@@ -73,33 +73,33 @@ buffers_30 <- st_buffer(st_as_sf(coords), dist = 30000) # 30 km buffer
 # extract each monthly measurement as the mean of values within each buffer
 terra::gdalCache(3276) # need to expand the "gdal cache" when using the full raster stack.
 
-ppt_monthly_10km <- exactextractr::exact_extract(ppt_stack, buffers_10, fun = "mean", append_cols = TRUE)
-tmean_monthly_10km <- exactextractr::exact_extract(tmean_stack, buffers_10, fun = "mean", append_cols = TRUE)
+ppt_annual_10km <- exactextractr::exact_extract(ppt_stack, buffers_10, fun = "mean")
+tmean_annual_10km <- exactextractr::exact_extract(tmean_stack, buffers_10, fun = "mean")
 
 
-ppt_monthly_30km <- exactextractr::exact_extract(ppt_stack, buffers_30, fun = "mean", append_cols = TRUE)
-tmean_monthly_30km <- exactextractr::exact_extract(tmean_stack, buffers_30, fun = "mean", append_cols = TRUE)
-
-
-
-colnames_key <- str_sub(colnames(ppt_monthly_10km), -4, end = nchar(colnames(ppt_monthly_10km)))
-colnames(ppt_monthly_10km) <- colnames(ppt_monthly_30km) <- colnames(tmean_monthly_10km) <- colnames(tmean_monthly_30km) <- colnames_key
-
-ppt_monthly_10km$prism_variable <- ppt_monthly_30km$prism_variable <- "ppt"; 
-
-tmean_monthly_10km$prism_variable <- tmean_monthly_30km$prism_variable <- "tmean"; 
-
-
-ppt_monthly_10km$buffer <- tmean_monthly_10km$buffer <-  "10km"
-ppt_monthly_30km$buffer <- tmean_monthly_30km$buffer <-  "30km"
-
-ppt_monthly_10km$lon <- ppt_monthly_30km$lon <- tmean_monthly_10km$lon <- tmean_monthly_30km$lon <-  coords_df$lon
-ppt_monthly_10km$lat <- ppt_monthly_30km$lat <- tmean_monthly_10km$lat <- tmean_monthly_30km$lat <-  coords_df$lat
+ppt_annual_30km <- exactextractr::exact_extract(ppt_stack, buffers_30, fun = "mean")
+tmean_annual_30km <- exactextractr::exact_extract(tmean_stack, buffers_30, fun = "mean")
 
 
 
+colnames_key <- str_sub(colnames(ppt_annual_10km), -4, end = nchar(colnames(ppt_annual_10km)))
+colnames(ppt_annual_10km) <- colnames(ppt_annual_30km) <- colnames(tmean_annual_10km) <- colnames(tmean_annual_30km) <- colnames_key
 
-PRISM_yearly_df <- as_tibble(rbind(ppt_monthly_10km, ppt_monthly_30km, tmean_monthly_10km, tmean_monthly_30km)) %>%   
+ppt_annual_10km$prism_variable <- ppt_annual_30km$prism_variable <- "ppt"; 
+
+tmean_annual_10km$prism_variable <- tmean_annual_30km$prism_variable <- "tmean"; 
+
+
+ppt_annual_10km$buffer <- tmean_annual_10km$buffer <-  "10km"
+ppt_annual_30km$buffer <- tmean_annual_30km$buffer <-  "30km"
+
+ppt_annual_10km$lon <- ppt_annual_30km$lon <- tmean_annual_10km$lon <- tmean_annual_30km$lon <-  coords_df$lon
+ppt_annual_10km$lat <- ppt_annual_30km$lat <- tmean_annual_10km$lat <- tmean_annual_30km$lat <-  coords_df$lat
+
+
+
+
+PRISM_yearly_df <- as_tibble(rbind(ppt_annual_10km, ppt_annual_30km, tmean_annual_10km, tmean_annual_30km)) %>%   
   na.omit() %>%
   pivot_longer(cols = c(-lon, -lat, -prism_variable, -buffer), names_to = "year") %>% 
   pivot_wider(names_from = prism_variable, values_from = value) 
@@ -127,7 +127,7 @@ TIN_stack <- terra::rast(stack(paste0(TIN_dir, TIN_files)))
 NO3_stack <- terra::rast(stack(paste0(NO3_dir, NO3_files))) 
 NH4_stack <- terra::rast(stack(paste0(NH4_dir, NH4_files))) 
 
-# calculating annual means within each raster stack
+# calculating annual sums within each raster stack
 
 years <- str_split_i(names(TIN_stack), "_",2)
 months <- str_split_i(names(TIN_stack), "_",3)
@@ -136,12 +136,13 @@ time(TIN_stack) <- as.Date(my(paste0(months, "/", years)))
 time(NO3_stack) <- as.Date(my(paste0(months, "/", years)))
 time(NH4_stack) <- as.Date(my(paste0(months, "/", years)))
 
-TIN_stack_year <- tapp(TIN_stack, "years", mean)
-NO3_stack_year <- tapp(NO3_stack, "years", mean)
-NH4_stack_year <- tapp(NH4_stack, "years", mean)
+TIN_stack_year <- tapp(TIN_stack, "years", sum)
+
+NO3_stack_year <- tapp(NO3_stack, "years", sum)
+NH4_stack_year <- tapp(NH4_stack, "years", sum)
 
 
-# extracting the monthly values at our coordinates
+# extracting the yearly values at our coordinates
 coords_df <- locations %>% 
   dplyr::select(lon,lat) %>% 
   distinct() 
@@ -152,16 +153,16 @@ coords <- SpatialPoints(cbind(coords_df$lon, coords_df$lat), proj4string = CRS(c
 buffers_10 <- st_buffer(st_as_sf(coords), dist = 10000) # 10 km buffer
 buffers_30 <- st_buffer(st_as_sf(coords), dist = 30000) # 30 km buffer
 
-# extract each monthly measurement as the mean of values within each buffer
+# extract each location's measurement as the mean of values within each buffer
 terra::gdalCache(3276) # need to expand the "gdal cache" when using the full raster stack.
 
-TIN_10km <- exactextractr::exact_extract(TIN_stack_year, buffers_10, fun = "mean", append_cols = TRUE)
-NO3_10km <- exactextractr::exact_extract(NO3_stack_year, buffers_10, fun = "mean", append_cols = TRUE)
-NH4_10km <- exactextractr::exact_extract(NH4_stack_year, buffers_10, fun = "mean", append_cols = TRUE)
+TIN_10km <- exactextractr::exact_extract(TIN_stack_year, buffers_10, fun = "mean")
+NO3_10km <- exactextractr::exact_extract(NO3_stack_year, buffers_10, fun = "mean")
+NH4_10km <- exactextractr::exact_extract(NH4_stack_year, buffers_10, fun = "mean")
 
-TIN_30km <- exactextractr::exact_extract(TIN_stack_year, buffers_30, fun = "mean", append_cols = TRUE)
-NO3_30km <- exactextractr::exact_extract(NO3_stack_year, buffers_30, fun = "mean", append_cols = TRUE)
-NH4_30km <- exactextractr::exact_extract(NH4_stack_year, buffers_30, fun = "mean", append_cols = TRUE)
+TIN_30km <- exactextractr::exact_extract(TIN_stack_year, buffers_30, fun = "mean")
+NO3_30km <- exactextractr::exact_extract(NO3_stack_year, buffers_30, fun = "mean")
+NH4_30km <- exactextractr::exact_extract(NH4_stack_year, buffers_30, fun = "mean")
 
 
 

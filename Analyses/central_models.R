@@ -12,7 +12,7 @@ library(dplyr)
 library(tidyverse) # for data manipulation and ggplot
 library(INLA) # for fitting integrated nested Laplace approximation models
 # devtools::install_github('timcdlucas/INLAutils')
-library(INLAutils) # supposedly has a function to plot residuals, might not need?
+# library(INLAutils) # supposedly has a function to plot residuals, might not need?
 library(inlabru)
 library(fmesher)
 
@@ -242,7 +242,7 @@ bdry <- st_intersection(coastline$geom, non_convex_bdry[[1]])
 
 # plot(bdry)
 
-bdry_polygon <- st_cast(st_sf(bdry), "MULTIPOLYGON", group_or_split = TRUE) %>% st_union() %>% 
+bdry_polygon <- st_cast(st_zm(bdry), "MULTIPOLYGON", group_or_split = TRUE) %>% st_union() %>% 
   as("Spatial")
 
 non_convex_bdry[[1]] <- bdry_polygon
@@ -489,7 +489,7 @@ ag_trend <- ggplot(ag.pred) +
   geom_point(data = ag_binned, aes(x = mean_ag, y = mean_endo, size = sample), color = "black", shape = 21)+
   scale_size_continuous(limits=c(1,310))+
   facet_wrap(~species,  ncol = 1, scales = "free_x", strip.position="right")+  
-  labs(y = "Endophyte Prevalence", x = "Percent Ag. (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
+  labs(y = "Endophyte Prevalence", x = "Percent Ag. (%)", size = "Sample Size")+
   theme_classic()+
   theme(strip.background = element_blank(),
         strip.text = element_blank(),
@@ -503,7 +503,7 @@ urb_trend <- ggplot(urb.pred) +
   geom_point(data = urb_binned, aes(x = mean_urb, y = mean_endo, size = sample), color = "black", shape = 21)+
   scale_size_continuous(limits=c(1,310))+
   facet_wrap(~species, ncol = 1, scales = "free_x", strip.position="right")+  
-  labs(y = "Endophyte Prevalence", x = "Percent Urban (%)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
+  labs(y = "Endophyte Prevalence", x = "Percent Urban (%)", size = "Sample Size")+
   theme_classic()+
   theme(strip.background = element_blank(),
         strip.text = element_blank(),
@@ -517,7 +517,7 @@ nit_trend <- ggplot(nit.pred) +
   geom_point(data = nit_binned, aes(x = mean_nit, y = mean_endo, size = sample), color = "black", shape = 21)+
   scale_size_continuous(limits=c(1,310))+
   facet_wrap(~species, ncol = 1, scales = "free_x", strip.position="right")+  
-  labs(y = "Endophyte Prevalence", x = "Nitrogen Deposition (kg N/km^2)", color = "Year", fill = "Year", shape = "Year", size = "Sample Size")+
+  labs(y = "Endophyte Prevalence", x = "Nitrogen Deposition (kg N/km^2/year)", size = "Sample Size")+
   theme_classic()+
   theme(strip.background = element_blank(), 
         strip.text = element_text( size = rel(1.1)), strip.text.y.right = element_text(face = "italic", angle = 0),
