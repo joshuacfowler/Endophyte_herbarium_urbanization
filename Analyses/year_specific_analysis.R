@@ -258,10 +258,7 @@ summary_endo_herb <- endo_herb %>%
                    max_year = max(year))
 
 contemp_endo_herb <- endo_herb %>% 
-  filter(!is.na(spec_PercentAg)) %>% 
-  select(lon, lat, year, Sample_id, scorer_factor, collector_factor, Endo_status_conservative, Endo_status_liberal, 
-         PercentAg,PercentUrban, spec_PercentAg, spec_PercentUrban, TIN_10km,  mean_TIN_10km,  ppt_10km, tmean_10km)
-
+  filter(!is.na(spec_PercentAg)) 
 
 #################################################################################################
 ############ plotting relationship between the contemporary data and the "normal" data ##########
@@ -281,15 +278,17 @@ TIN_R2 <- contemp_endo_herb %>%
 ggplot(contemp_endo_herb)+
   geom_point(aes(x = spec_PercentAg, y = PercentAg))+
   labs(x = "Agr. % (year specific)", y = "Agr. % (Normal)")+
-  labs(title = expression(paste(R^{2}, "= ", round(contemp_R2$ag_R2, 4))))+
+  labs(title = paste0("r^2 = ", round(contemp_R2$ag_R2, 4)))+
   theme_classic()
 ggplot(contemp_endo_herb)+
   geom_point(aes(x = spec_PercentUrban, y = PercentUrban))+
-  labs(x = "Urb. % (year specific)", y = "Urb. % (Normal)"))+
+  labs(x = "Urb. % (year specific)", y = "Urb. % (Normal)")+
+  labs(title = paste0("r^2 = ", round(contemp_R2$urb_R2, 4)))+
   theme_classic()
 ggplot(contemp_endo_herb)+
-  labs(x = "TIN (year specific)", y = "TIN (Normal)"))+
   geom_point(aes(x = TIN_10km, y = mean_TIN_10km))+
+  labs(x = "TIN (year specific)", y = "TIN (Normal)")+
+  labs(title = paste0("r^2 = ", round(TIN_R2$TIN_R2, 4)))+
   theme_classic()
 
 
@@ -303,7 +302,8 @@ ggplot(contemp_endo_herb)+
 
 # Build the spatial mesh from the coords for each species and a boundary around each species predicted distribution (eventually from Jacob's work ev)
 
-data <- endo_herb
+data <- contemp_endo_herb %>% 
+  filter(!is.na(TIN_10km))
 
 # Build the spatial mesh from the coords for each species and a boundary around each species predicted distribution (eventually from Jacob's work ev)
 coords <- cbind(data$easting, data$northing)
@@ -401,25 +401,15 @@ pc_prec <- list(prior = "pcprec", param = c(1, 0.1))
 data <- data %>% 
   mutate(Spp_index = as.numeric(as.factor(Spp_code)))
 
-s_components.y.rfx <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km + Spp_code*PercentAg + Spp_code*PercentUrban, model = "fixed")+
-  year(year, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$year)), hyper = list(pc_prec)) +
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
 
-s_components.climate <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*tmean_10km + Spp_code*ppt_10km, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-s_components <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km + Spp_code*PercentAg + Spp_code*PercentUrban, model = "fixed")+
+s_components <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*TIN_10km + Spp_code*spec_PercentAg + Spp_code*spec_PercentUrban, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
 
 
 
-s_components.year <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*year*mean_TIN_10km + Spp_code*year*PercentAg + Spp_code*year*PercentUrban, model = "fixed")+
+s_components.year <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*year*TIN_10km + Spp_code*year*spec_PercentAg + Spp_code*year*spec_PercentUrban, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
@@ -427,112 +417,11 @@ s_components.year <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*year*mean_TIN_10km + Sp
 
 
 
-
-
-s_components.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*std_TIN + Spp_code*std_year*std_ag + Spp_code*std_year*std_urb, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-
-
-
-
-s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_ag + Spp_code*std_urb + Spp_code*std_TIN, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde) 
-
-# s_components.tin <- ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*TIN_mean, model = "fixed")+
-#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-#   space_int(coords, model = spde) 
-# 
-# s_components.tinyr <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*TIN_mean, model = "fixed")+
-#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-#   space_int(coords, model = spde)
-# 
-# s_components.nh4yr <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*NH4_mean, model = "fixed")+
-#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-#   space_int(coords, model = spde)
-
-# s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_ag + Spp_code*std_urb + Spp_code*std_nit, model = "fixed")+
-#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-#   space_int(coords, model = spde) 
-
-# s_components.5 <-  ~ 0 + species(main = ~ 0 + Spp_code, model = "fixed") +  
-#   species.ag(main = ~ 0 + Spp_code:PercentAg, model = "fixed") + species.urb(main = ~ 0 + Spp_code:PercentUrban, model = "fixed") + species.nit(main = ~ 0 +Spp_code:NO3_mean, model = "fixed")+
-#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-#   space_int(coords, model = spde) 
-# 
-# s_components.5 <-  ~ 0 + fixed(main = ~ 0 + Spp_code*PercentAg*std_year + Spp_code*PercentUrban*std_year + Spp_code*NO3_mean*std_year, model = "fixed")+
-#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-#   space_int(coords, model = spde) 
-# putting the components with the formula
 s_formula <- Endo_status_liberal ~ .
 
 
 # Now run the model
-
-# fit.1 <- bru(s_components.1,
-#            like(
-#              formula = s_formula,
-#              family = "binomial",
-#              Ntrials = 1,
-#              data = data
-#            ),
-#            options = list(
-#              control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-#              control.inla = list(int.strategy = "eb"),
-#              verbose = TRUE
-#            )
-# )
-# 
-# fit.2 <- bru(s_components.2,
-#              like(
-#                formula = s_formula,
-#                family = "binomial",
-#                Ntrials = 1,
-#                data = data
-#              ),
-#              options = list(
-#                control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-#                control.inla = list(int.strategy = "eb"),
-#                verbose = TRUE
-#              )
-# )
-fit.y.rfx <- bru(s_components.y.rfx,
-                 like(
-                   formula = s_formula,
-                   family = "binomial",
-                   Ntrials = 1,
-                   data = data
-                 ),
-                 options = list(
-                   control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-                   control.inla = list(int.strategy = "eb"),
-                   verbose = TRUE
-                 )
-)
-fit.climate <- bru(s_components.climate,
-                   like(
-                     formula = s_formula,
-                     family = "binomial",
-                     Ntrials = 1,
-                     data = data
-                   ),
-                   options = list(
-                     control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-                     control.inla = list(int.strategy = "eb"),
-                     verbose = TRUE
-                   )
-)
-fit.year <- bru(s_components.year,
+fit <- bru(s_components,
                 like(
                   formula = s_formula,
                   family = "binomial",
@@ -546,134 +435,14 @@ fit.year <- bru(s_components.year,
                 )
 )
 
-
-fit.climate <- bru(s_components.climate,
-                   like(
-                     formula = s_formula,
-                     family = "binomial",
-                     Ntrials = 1,
-                     data = data
-                   ),
-                   options = list(
-                     control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-                     control.inla = list(int.strategy = "eb"),
-                     verbose = TRUE
-                   )
-)
-
-
-
-
-fit.3 <- bru(s_components.3,
-             like(
-               formula = s_formula,
-               family = "binomial",
-               Ntrials = 1,
-               data = data
-             ),
-             options = list(
-               control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-               control.inla = list(int.strategy = "eb"),
-               verbose = TRUE
-             )
-)
-
-
-fit.4 <- bru(s_components.4,
-             like(
-               formula = s_formula,
-               family = "binomial",
-               Ntrials = 1,
-               data = data
-             ),
-             options = list(
-               control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-               control.inla = list(int.strategy = "eb"),
-               verbose = TRUE
-             )
-)
-
-# fit.tin <- bru(s_components.tin,
-#                    like(
-#                      formula = s_formula,
-#                      family = "binomial",
-#                      Ntrials = 1,
-#                      data = data
-#                    ),
-#                    options = list(
-#                      control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-#                      control.inla = list(int.strategy = "eb"),
-#                      verbose = TRUE
-#                    )
-# )
-
-# fit.tinyr <- bru(s_components.tinyr,
-#              like(
-#                formula = s_formula,
-#                family = "binomial",
-#                Ntrials = 1,
-#                data = data
-#              ),
-#              options = list(
-#                control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-#                control.inla = list(int.strategy = "eb"),
-#                verbose = TRUE
-#              )
-# )
-# 
-# fit.nh4yr <- bru(s_components.nh4yr,
-#                  like(
-#                    formula = s_formula,
-#                    family = "binomial",
-#                    Ntrials = 1,
-#                    data = data
-#                  ),
-#                  options = list(
-#                    control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-#                    control.inla = list(int.strategy = "eb"),
-#                    verbose = TRUE
-#                  )
-# )
-
-# fit.5 <- bru(s_components.5,
-#              like(
-#                formula = s_formula,
-#                family = "binomial",
-#                Ntrials = 1,
-#                data = data
-#              ),
-#              options = list(
-#                control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-#                control.inla = list(int.strategy = "eb"),
-#                verbose = TRUE
-#              )
-# )
-fit.y.rfx$dic$dic
 fit$dic$dic
-fit.year$dic$dic
 
-fit.climate$dic$dic
 
-fit.1$dic$dic
-fit.2$dic$dic
-fit.3$dic$dic
-fit.4$dic$dic
-fit.5$dic$dic
-
-fit.y.rfx$mode$mode.status # a 0 or low value indicates "convergence"
 fit$mode$mode.status # a 0 or low value indicates "convergence"
-fit.year$mode$mode.status # a 0 or low value indicates "convergence"
-fit.climate$mode$mode.status # a 0 or low value indicates "convergence"
 
-fit.3$mode$mode.status # a 0 or low value indicates "convergence"
-fit.4$mode$mode.status # a 0 or low value indicates "convergence"
 
-fit.y.rfx$summary.fixed
-fit.y.rfx$summary.random
-
-saveRDS(fit.2, file = "fit_wo_N.rds")
-fit.2 <- read_rds(file = "fit_wo_N.rds")
-
+fit$summary.fixed
+fit$summary.random
 
 
 
@@ -683,56 +452,53 @@ fit.2 <- read_rds(file = "fit_wo_N.rds")
 ##########  Plotting the prediction without year effects ###############
 ################################################################################################################################
 
-min_ag<- min(data$PercentAg)
-mean_ag <- mean(data$PercentAg)
-max_ag <- max(data$PercentAg)
+min_ag<- min(data$spec_PercentAg)
+mean_ag <- mean(data$spec_PercentAg)
+max_ag <- max(data$spec_PercentAg)
 
-min_urb<- min(data$PercentUrban)
-mean_urb <- mean(data$PercentUrban)
-max_urb<- max(data$PercentUrban)
+min_urb<- min(data$spec_PercentUrban)
+mean_urb <- mean(data$spec_PercentUrban)
+max_urb<- max(data$spec_PercentUrban)
 
-min_nit<- min(data$mean_TIN_10km)
-mean_nit <- mean(data$mean_TIN_10km)
-max_nit<- max(data$mean_TIN_10km)
+min_nit<- min(data$TIN_10km)
+mean_nit <- mean(data$TIN_10km)
+max_nit<- max(data$TIN_10km)
 
 preddata.1 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
-                     PercentAg = rep(seq(min_ag, max_ag, length.out = 50), times = 3),
-                     PercentUrban = mean_urb,
-                     mean_TIN_10km = mean_nit,
-                     year_index = 9999,
+                     spec_PercentAg = rep(seq(min_ag, max_ag, length.out = 50), times = 3),
+                     spec_PercentUrban = mean_urb,
+                     TIN_10km = mean_nit,
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
                              Spp_code == "ELVI" ~ species_names[3]))
 preddata.2 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
-                     PercentAg = mean_ag,
-                     PercentUrban = rep(seq(min_urb, max_urb, length.out = 50), times = 3),
-                     mean_TIN_10km = mean_nit,
-                     year_index = 9999,
+                     spec_PercentAg = mean_ag,
+                     spec_PercentUrban = rep(seq(min_urb, max_urb, length.out = 50), times = 3),
+                     TIN_10km = mean_nit,
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
                              Spp_code == "ELVI" ~ species_names[3]))
 
 preddata.3 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50),rep("ELVI",times = 50)),
-                     PercentAg = mean_ag,
-                     PercentUrban = mean_urb,
-                     mean_TIN_10km = rep(seq(min_nit, max_nit, length.out = 50), times = 3),
-                     year_index = 9999,
+                     spec_PercentAg = mean_ag,
+                     spec_PercentUrban = mean_urb,
+                     TIN_10km = rep(seq(min_nit, max_nit, length.out = 50), times = 3),
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
                              Spp_code == "AGPE" ~ species_names[2],
                              Spp_code == "ELVI" ~ species_names[3]))
 
 ag.pred <- predict(
-  fit.y.rfx,
+  fit,
   newdata = preddata.1,
   formula = ~ invlogit(fixed),# + year_eval(year_index)),#+ collector_eval(collector_index) + scorer_eval(scorer_index) + year_eval(year_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
   n.samples = 100) 
 
 urb.pred <- predict(
-  fit.y.rfx,
+  fit,
   newdata = preddata.2,
   formula = ~ invlogit(fixed),# + year_eval(year_index)),#+ collector_eval(collector_index) + scorer_eval(scorer_index) + year_eval(year_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
@@ -740,7 +506,7 @@ urb.pred <- predict(
 
 
 nit.pred <- predict(
-  fit.y.rfx,
+  fit,
   newdata = preddata.3,
   formula = ~ invlogit(fixed),# + year_eval(year_index)),#+ collector_eval(collector_index) + scorer_eval(scorer_index) + year_eval(year_index)),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
@@ -752,30 +518,30 @@ values <-  c("#b2abd2", "#5e3c99")
 
 
 ag_binned <- data %>% 
-  mutate(ag_bin = cut(PercentAg, breaks = 30)) %>% 
+  mutate(ag_bin = cut(spec_PercentAg, breaks = 10)) %>% 
   group_by(species, ag_bin) %>% 
   summarize(mean_endo = mean(Endo_status_liberal),
-            mean_ag = mean(PercentAg),
+            mean_ag = mean(spec_PercentAg),
             sample = n())
 
 urb_binned <- data %>% 
-  mutate(urb_bin = cut(PercentUrban, breaks = 30)) %>% 
+  mutate(urb_bin = cut(spec_PercentUrban, breaks = 10)) %>% 
   group_by(species, urb_bin) %>% 
   summarize(mean_endo = mean(Endo_status_liberal),
-            mean_urb = mean(PercentUrban),
+            mean_urb = mean(spec_PercentUrban),
             sample = n())
 
 nit_binned <- data %>% 
-  mutate(nit_bin = cut(mean_TIN_10km, breaks = 30)) %>% 
+  mutate(nit_bin = cut(TIN_10km, breaks = 10)) %>% 
   group_by(species, nit_bin) %>% 
   summarize(mean_endo = mean(Endo_status_liberal),
-            mean_nit = mean(mean_TIN_10km),
+            mean_nit = mean(TIN_10km),
             sample = n())
 
 ag_trend <- ggplot(ag.pred) +
-  geom_line(aes(x = PercentAg, mean)) +
-  geom_ribbon(aes(PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#B38600") +
-  geom_ribbon(aes(PercentAg, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
+  geom_line(aes(x = spec_PercentAg, mean)) +
+  geom_ribbon(aes(spec_PercentAg, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#B38600") +
+  geom_ribbon(aes(spec_PercentAg, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
   geom_point(data = ag_binned, aes(x = mean_ag, y = mean_endo, size = sample), color = "black", shape = 21)+
   scale_size_continuous(limits=c(1,260))+
   facet_wrap(~species,  ncol = 1, scales = "free_x", strip.position="right")+  
@@ -787,9 +553,9 @@ ag_trend <- ggplot(ag.pred) +
 # lims(y = c(0,1), x = c(0, 100))
 
 urb_trend <- ggplot(urb.pred) +
-  geom_line(aes(PercentUrban, mean)) +
-  geom_ribbon(aes(PercentUrban, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#021475") +
-  geom_ribbon(aes(PercentUrban, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
+  geom_line(aes(spec_PercentUrban, mean)) +
+  geom_ribbon(aes(spec_PercentUrban, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#021475") +
+  geom_ribbon(aes(spec_PercentUrban, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
   geom_point(data = urb_binned, aes(x = mean_urb, y = mean_endo, size = sample), color = "black", shape = 21)+
   scale_size_continuous(limits=c(1,260))+
   facet_wrap(~species, ncol = 1, scales = "free_x", strip.position="right")+  
@@ -801,9 +567,9 @@ urb_trend <- ggplot(urb.pred) +
 
 
 nit_trend <- ggplot(nit.pred) +
-  geom_line(aes(mean_TIN_10km, mean)) +
-  geom_ribbon(aes(mean_TIN_10km, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#BF00A0") +
-  geom_ribbon(aes(mean_TIN_10km, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
+  geom_line(aes(TIN_10km, mean)) +
+  geom_ribbon(aes(TIN_10km, ymin = q0.025, ymax = q0.975), alpha = 0.2, fill = "#BF00A0") +
+  geom_ribbon(aes(TIN_10km, ymin = q0.25, ymax = q0.75), alpha = 0.2) +
   geom_point(data = nit_binned, aes(x = mean_nit, y = mean_endo, size = sample), color = "black", shape = 21)+
   scale_size_continuous(limits=c(1,260))+
   facet_wrap(~species, ncol = 1, scales = "free_x", strip.position="right")+  
@@ -819,7 +585,7 @@ ag_trend <- tag_facet(ag_trend)
 urb_trend <- tag_facet(urb_trend, tag_pool =  letters[-(1:3)])
 nit_trend <- tag_facet(nit_trend, tag_pool =  letters[-(1:6)])
 fig1 <-   ag_trend + urb_trend + nit_trend + plot_layout(ncol = 3, guides = "collect") 
-ggsave(fig1, file = "Figure_2_test1.png", width = 10, height = 8)
+ggsave(fig1, file = "year_specific_data.png", width = 10, height = 8)
 
 
 
