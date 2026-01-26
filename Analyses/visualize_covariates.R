@@ -16,6 +16,7 @@ library(patchwork)
 library(egg) # for labelling panels
 library(ggmap)
 library(maps)
+library(ggplot2)
 
 
 
@@ -26,9 +27,9 @@ library(maps)
 # This is where I'm loading in the version of the data set without land cover and nitrogen data, but we ought to be able to replace this easily
 
 
-Mallorypath <- "C:/Users/malpa/OneDrive/Documents/EndoHerbQGIS/"
+Mallorypath <- "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/"
 Joshpath <- "Analyses/"
-path <- Joshpath
+path <- Mallorypath
 
 
 endo_herb_georef <- read_csv(file = paste0(path, "full_Zonalhist_NLCD_2001_10km.csv")) %>%
@@ -177,6 +178,13 @@ outline_map <- map_data("world")
 states_shape <- map_data("state")
 counties <- map_data("county")
 
+########################################################################################
+############################## Temporal distribution figure#############################
+########################################################################################
+
+ggplot(data = endo_herb, aes(x = year)) +
+  geom_histogram(binwidth = 5, fill = "lightblue", col = "white")+
+  labs(x = "Collection Year", y = "Number of Herbarium Samples")
 
 
 #########################################################################################
