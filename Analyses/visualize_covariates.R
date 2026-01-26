@@ -322,15 +322,16 @@ predictor_correlations <- predictor_correlations_pearson + predictor_correlation
 ggsave(predictor_correlations, filename = "Plots/predictor_correlations.png", width = 7, height = 8)
 
 # calculating variance inflation factors
-vif.m <- lm(Endo_status_liberal~PercentAg +  PercentUrban + mean_TIN_10km + tmean_10km + ppt_10km, data = endo_herb)
+vif.m <- lm(Endo_status_liberal~PercentAg +  PercentUrban + mean_TIN_10km + tmean_10km + ppt_10km + year, data = endo_herb)
 
 vif <- car::vif(vif.m, type="terms")
 vif_values <- tibble("vif" = vif, "term" = names(vif)) %>% 
   mutate(Predictor = case_when(term == "PercentAg" ~ "Percent Agr.",
                                term == "PercentUrban" ~ "Percent Urb.",
                                term == "mean_TIN_10km" ~ "Total Nit.",
-                               term == "tmean_10km" ~ "MAT",
-                               term == "ppt_10km" ~ "PPT"))
+                               term == "tmean_10km" ~ "Temp.",
+                               term == "ppt_10km" ~ "PPT",
+                               term == "year" ~ "Year"))
 
 vif_plot <- ggplot(vif_values)+
   geom_point(aes(x = Predictor, y = vif))+
@@ -338,7 +339,7 @@ vif_plot <- ggplot(vif_values)+
   ylim(0,2) + labs(y = "Variance Inflation Factor", x = "Predictor")+
   theme_minimal()
 
-# vif_plot
+vif_plot
 ggsave(vif_plot, filename = "Plots/vif_plot.png", width = 4, height = 4)
 
 
@@ -402,7 +403,31 @@ row_1 <- wrap_elements(ag_urb |ag_nit | ag_temp | ag_ppt )
 
 row_2 <- wrap_elements(urb_nit | urb_temp | urb_ppt| plot_spacer() )
 row_3 <-wrap_elements(nit_temp | nit_ppt| plot_spacer() |plot_spacer() )
-row_4 <- wrap_elements(plot_spacer() |plot_spacer() |plot_spacer() |tmean_ppt )
+row_4 <- wrap_elements(tmean_ppt |plot_spacer() |plot_spacer() |plot_spacer())
 pairs_plot <- row_1 / row_2 / row_3 /row_4 + plot_annotation(tag_levels = "A")
 ggsave(pairs_plot, filename = "Plots/pairs_plot.png", width = 8, height = 10)
+
+
+
+
+# now plotting covariates against collection year
+
+year_temp <- ggplot(endo_herb)+
+  geom_point(aes(x = year, y = tmean_10km), alpha = .2)+
+  geom_smooth(aes(x = year, y = tmean_10km))+
+  labs(x =  "Collection Year", y = "Mean Annual Temp.")+
+  theme_classic() + theme(panel.grid.major = element_line(color = "gray"))
+year_ppt <- ggplot(endo_herb)+
+  geom_point(aes(x = year, y = ppt_10km), alpha = .2)+
+  geom_smooth(aes(x = year, y = ppt_10km))+
+  labs(x =  "Collection Year", y = "Annual Precip.")+
+  theme_classic() + theme(panel.grid.major = element_line(color = "gray"))
+year_nit <- ggplot(endo_herb)+
+  geom_point(aes(x = year, y = mean_TIN_10km), alpha = .2)+
+  labs(x =  "Collection Year", y = "Nit. Dep (kg N/sqkm/year)")+
+  theme_classic() + theme(panel.grid.major = element_line(color = "gray"))
+
+year_plot <- year_temp + year_ppt + year_nit
+ggsave(year_plot, filename = "Plots/year_pairs_plot.png", width = 8, height = 4)
+
 
