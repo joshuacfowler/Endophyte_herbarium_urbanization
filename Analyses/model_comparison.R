@@ -226,7 +226,7 @@ data <- endo_herb %>%
 # Build the spatial mesh from the coords for each species and a boundary around each species predicted distribution (eventually from Jacob's work ev)
 coords <- cbind(data$easting, data$northing)
 
-non_convex_bdry <- fm_extensions(
+non_convex_bdry <- fmesher::fm_extensions(
   data$geometry,
   convex = c(250, 500),
   concave = c(250, 500),
@@ -243,8 +243,7 @@ bdry <- st_intersection(coastline$geom, non_convex_bdry[[1]])
 
 # plot(bdry)
 
-bdry_polygon <- st_cast(st_sf(bdry), "MULTIPOLYGON", group_or_split = TRUE) %>% st_union() %>% 
-  as("Spatial")
+bdry_polygon <- st_cast(st_sf(bdry), "MULTIPOLYGON", group_or_split = TRUE) %>% st_union() 
 
 non_convex_bdry[[1]] <- bdry_polygon
 
@@ -313,131 +312,377 @@ pc_prec <- list(prior = "pcprec", param = c(1, 0.1))
 # View(model.matrix(~0 + Spp_code*PercentAg, data))
 
 
-# version with all species in one model. Note that we remove the intercept, and then we have to specify that the species is a factor 
-
 # comparing different levels of interactions
 data <- data %>% 
   mutate(Spp_index = as.numeric(as.factor(Spp_code)))
 
-s_components.1 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-s_components.2 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code + mean_TIN_10km + PercentAg + PercentUrban, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-
-s_components.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km + Spp_code*PercentAg + Spp_code*PercentUrban, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km*PercentAg*PercentUrban, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-s_components.5 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-
-s_components.6 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-
-s_components.7 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentUrban, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-s_components.8 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*tmean_10km, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-
-s_components.9 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*ppt_10km, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-
-s_components.nit.1 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*ppt_10km*mean_TIN_10km, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-s_components.nit.2 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*tmean_10km*mean_TIN_10km, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-s_components.nit.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentUrban*mean_TIN_10km, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-s_components.nit.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg*mean_TIN_10km, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-
-
-
-
-
-s_components.climate.1 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code + mean_TIN_10km + PercentAg + PercentUrban + tmean_10km + ppt_10km, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-s_components.climate.2 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*tmean_10km + Spp_code*ppt_10km, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-
-
-
-s_components.year.1 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code + year + mean_TIN_10km + PercentAg + PercentUrban, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-s_components.year.2 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*year*mean_TIN_10km + Spp_code*year*PercentAg + Spp_code*year*PercentUrban, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-s_components.year.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*year*mean_TIN_10km*PercentAg*PercentUrban, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-
-s_components.year.climate.1 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code + year + mean_TIN_10km + PercentAg + PercentUrban + tmean_10km + ppt_10km, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-
-s_components.year.climate.2 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*year*mean_TIN_10km + Spp_code*year*PercentAg + Spp_code*year*PercentUrban + Spp_code*year*tmean_10km + Spp_code*year*ppt_10km, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde)
-
-
-
-# s_components.y.rfx <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km + Spp_code*PercentAg + Spp_code*PercentUrban, model = "fixed")+
-#   year(year, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$year)), hyper = list(pc_prec)) +
+# s_components.1 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code, model = "fixed")+
 #   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
 #   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
 #   space_int(coords, model = spde)
+# 
+# s_components.2 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code + mean_TIN_10km + PercentAg + PercentUrban, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# 
+# s_components.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km + Spp_code*PercentAg + Spp_code*PercentUrban, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km*PercentAg*PercentUrban, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.5 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# 
+# s_components.6 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# 
+# s_components.7 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentUrban, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.8 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*tmean_10km, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# 
+# s_components.9 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*ppt_10km, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# 
+# s_components.nit.1 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*ppt_10km*mean_TIN_10km, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# s_components.nit.2 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*tmean_10km*mean_TIN_10km, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# s_components.nit.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentUrban*mean_TIN_10km, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# s_components.nit.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*PercentAg*mean_TIN_10km, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# 
+# 
+# 
+# 
+# 
+# s_components.climate.1 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code + mean_TIN_10km + PercentAg + PercentUrban + tmean_10km + ppt_10km, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.climate.2 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km + Spp_code*PercentAg + Spp_code*PercentUrban + Spp_code*tmean_10km + Spp_code*ppt_10km, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.climate.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km*tmean_10km*ppt_10km + Spp_code*PercentAg*tmean_10km*ppt_10km  + Spp_code*PercentUrban*tmean_10km*ppt_10km , model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.climate.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km*tmean_10km + Spp_code*PercentAg*tmean_10km  + Spp_code*PercentUrban*tmean_10km , model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.climate.5 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km*ppt_10km + Spp_code*PercentAg*ppt_10km  + Spp_code*PercentUrban*ppt_10km , model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.climate.6 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km*PercentAg*PercentUrban*tmean_10km , model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.climate.7 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km*PercentAg*PercentUrban*ppt_10km , model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.climate.8 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km*PercentAg*PercentUrban*ppt_10km*tmean_10km , model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# 
+# 
+# 
+# 
+# s_components.year.1 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code + year + mean_TIN_10km + PercentAg + PercentUrban, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.year.2 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*year*mean_TIN_10km + Spp_code*year*PercentAg + Spp_code*year*PercentUrban, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.year.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*year*mean_TIN_10km*PercentAg*PercentUrban, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# 
+# 
+# s_components.year.climate.1 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code + year + mean_TIN_10km + PercentAg + PercentUrban + tmean_10km + ppt_10km, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# 
+# s_components.year.climate.2 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*year*mean_TIN_10km + Spp_code*year*PercentAg + Spp_code*year*PercentUrban + Spp_code*year*tmean_10km + Spp_code*year*ppt_10km, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.year.climate.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*year*mean_TIN_10km*PercentAg*PercentUrban*tmean_10km , model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.year.climate.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*year*mean_TIN_10km*PercentAg*PercentUrban*ppt_10km , model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# 
+# 
+# 
+# s_components.dag.1 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km*PercentAg*PercentUrban + Spp_code*ppt_10km + Spp_code*tmean_10km, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.dag.2 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km*PercentAg*PercentUrban + Spp_code*tmean_10km, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.dag.3 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km*PercentAg*PercentUrban + Spp_code*ppt_10km, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde) 
+# 
+# s_components.dag.4 <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km*ppt_10km + Spp_code*PercentAg*PercentUrban*tmean_10km, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.dag.5 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km + tmean_10km)^3, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.dag.6 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km + tmean_10km)^4, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.dag.7 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km + tmean_10km)^5, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# s_components.dag.8 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km)^3, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# s_components.dag.9 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km)^4, model = "fixed")+
+#   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+#   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+#   space_int(coords, model = spde)
+# 
+# 
+
+
+
+s_components.1 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km + tmean_10km), model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components.2 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km + tmean_10km)^2, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components.3 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km + tmean_10km)^3, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components.4 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km + tmean_10km)^4, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components.5 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km), model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components.6 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km)^2, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components.7 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km)^3, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components.8 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km)^4, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components.9 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + tmean_10km), model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components.10 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + tmean_10km)^2, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components.11 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + tmean_10km)^3, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components.12 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + tmean_10km)^4, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components.13 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban), model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components.14 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban)^2, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components.15 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg + PercentUrban)^3, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+
+# models including year
+s_components_year.1 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km + tmean_10km), model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components_year.2 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km + tmean_10km)^2, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components_year.3 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km + tmean_10km)^3, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components_year.4 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km + tmean_10km)^4, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components_year.5 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km), model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components_year.6 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km)^2, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components_year.7 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km)^3, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components_year.8 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km)^4, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components_year.9 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + tmean_10km), model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components_year.10 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + tmean_10km)^2, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components_year.11 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + tmean_10km)^3, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components_year.12 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + tmean_10km)^4, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components_year.13 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year), model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components_year.14 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year)^2, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+s_components_year.15 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year)^3, model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+
+
+
+
+
+components_list <- list()
+components_list[[1]]   <- s_components.1
+components_list[[2]]   <- s_components.2
+components_list[[3]]   <- s_components.3
+components_list[[4]]   <- s_components.4
+components_list[[5]]   <- s_components.5
+components_list[[6]]   <- s_components.6
+components_list[[7]]   <- s_components.7
+components_list[[8]]   <- s_components.8
+components_list[[9]]   <- s_components.9
+components_list[[10]]  <- s_components.10
+components_list[[11]]  <- s_components.11
+components_list[[12]]  <- s_components.12
+components_list[[13]]  <- s_components.13
+components_list[[14]]  <- s_components.14
+components_list[[15]]  <- s_components.15
+components_list[[16]]  <- s_components_year.1
+components_list[[17]]  <- s_components_year.2
+components_list[[18]]  <- s_components_year.3
+components_list[[19]]  <- s_components_year.4
+components_list[[20]]  <- s_components_year.5
+components_list[[21]]  <- s_components_year.6
+components_list[[22]]  <- s_components_year.7
+components_list[[23]]  <- s_components_year.8
+components_list[[24]]  <- s_components_year.9
+components_list[[25]]  <- s_components_year.10
+components_list[[26]]  <- s_components_year.11
+components_list[[27]]  <- s_components_year.12
+components_list[[28]]  <- s_components_year.13
+components_list[[29]]  <- s_components_year.14
+components_list[[30]]  <- s_components_year.15
+
+
+
+
 
 
 
@@ -447,517 +692,58 @@ s_formula <- Endo_status_liberal ~ .
 # Now run the model
 
 
+fit_list <- list()
 
-fit.1 <- bru(s_components.1,
-             like(
-               formula = s_formula,
-               family = "binomial",
-               Ntrials = 1,
-               data = data
-             ),
-             options = list(
-               control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-               control.inla = list(int.strategy = "eb"),
-               verbose = TRUE
-             )
-)
+for(i in 1:length(components_list)){
+  for(i in 1:15){
+  fit_list[[i]] <- bru(components_list[[i]],
+                       like(
+                         formula = s_formula,
+                         family = "binomial",
+                         Ntrials = 1,
+                         data = data
+                       ),
+                       options = list(
+                         control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
+                         control.inla = list(int.strategy = "eb"),
+                         verbose = TRUE
+                       )
+  )
+}
 
-fit.2 <- bru(s_components.2,
-             like(
-               formula = s_formula,
-               family = "binomial",
-               Ntrials = 1,
-               data = data
-             ),
-             options = list(
-               control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-               control.inla = list(int.strategy = "eb"),
-               verbose = TRUE
-             )
-)
-
-fit.3 <- bru(s_components.3,
-             like(
-               formula = s_formula,
-               family = "binomial",
-               Ntrials = 1,
-               data = data
-             ),
-             options = list(
-               control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-               control.inla = list(int.strategy = "eb"),
-               verbose = TRUE
-             )
-)
-
-fit.4 <- bru(s_components.4,
-             like(
-               formula = s_formula,
-               family = "binomial",
-               Ntrials = 1,
-               data = data
-             ),
-             options = list(
-               control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-               control.inla = list(int.strategy = "eb"),
-               verbose = TRUE
-             )
-)
-
-#
-fit.5 <- bru(s_components.5,
-             like(
-               formula = s_formula,
-               family = "binomial",
-               Ntrials = 1,
-               data = data
-             ),
-             options = list(
-               control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-               control.inla = list(int.strategy = "eb"),
-               verbose = TRUE
-             )
-)
-
-fit.6 <- bru(s_components.6,
-             like(
-               formula = s_formula,
-               family = "binomial",
-               Ntrials = 1,
-               data = data
-             ),
-             options = list(
-               control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-               control.inla = list(int.strategy = "eb"),
-               verbose = TRUE
-             )
-)
-
-fit.7 <- bru(s_components.7,
-             like(
-               formula = s_formula,
-               family = "binomial",
-               Ntrials = 1,
-               data = data
-             ),
-             options = list(
-               control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-               control.inla = list(int.strategy = "eb"),
-               verbose = TRUE
-             )
-)
-
-fit.8 <- bru(s_components.8,
-             like(
-               formula = s_formula,
-               family = "binomial",
-               Ntrials = 1,
-               data = data
-             ),
-             options = list(
-               control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-               control.inla = list(int.strategy = "eb"),
-               verbose = TRUE
-             )
-)
-
-fit.9 <- bru(s_components.9,
-             like(
-               formula = s_formula,
-               family = "binomial",
-               Ntrials = 1,
-               data = data
-             ),
-             options = list(
-               control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-               control.inla = list(int.strategy = "eb"),
-               verbose = TRUE
-             )
-)
-
-
-
-fit.nit.1 <- bru(s_components.nit.1,
-             like(
-               formula = s_formula,
-               family = "binomial",
-               Ntrials = 1,
-               data = data
-             ),
-             options = list(
-               control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-               control.inla = list(int.strategy = "eb"),
-               verbose = TRUE
-             )
-)
-
-fit.nit.2 <- bru(s_components.nit.2,
-                 like(
-                   formula = s_formula,
-                   family = "binomial",
-                   Ntrials = 1,
-                   data = data
-                 ),
-                 options = list(
-                   control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-                   control.inla = list(int.strategy = "eb"),
-                   verbose = TRUE
-                 )
-)
-
-fit.nit.3 <- bru(s_components.nit.3,
-                  like(
-                    formula = s_formula,
-                    family = "binomial",
-                    Ntrials = 1,
-                    data = data
-                  ),
-                  options = list(
-                    control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-                    control.inla = list(int.strategy = "eb"),
-                    verbose = TRUE
-                  )
-)
-
-fit.nit.4 <- bru(s_components.nit.4,
-                  like(
-                    formula = s_formula,
-                    family = "binomial",
-                    Ntrials = 1,
-                    data = data
-                  ),
-                  options = list(
-                    control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-                    control.inla = list(int.strategy = "eb"),
-                    verbose = TRUE
-                  )
-)
-
-
-fit.climate.1 <- bru(s_components.climate.1,
-             like(
-               formula = s_formula,
-               family = "binomial",
-               Ntrials = 1,
-               data = data
-             ),
-             options = list(
-               control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-               control.inla = list(int.strategy = "eb"),
-               verbose = TRUE
-             )
-)
-
-
-fit.climate.2 <- bru(s_components.climate.2,
-                     like(
-                       formula = s_formula,
-                       family = "binomial",
-                       Ntrials = 1,
-                       data = data
-                     ),
-                     options = list(
-                       control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-                       control.inla = list(int.strategy = "eb"),
-                       verbose = TRUE
-                     )
-)
-
-
-
-
-
-fit.year.1 <- bru(s_components.year.1,
-                     like(
-                       formula = s_formula,
-                       family = "binomial",
-                       Ntrials = 1,
-                       data = data
-                     ),
-                     options = list(
-                       control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-                       control.inla = list(int.strategy = "eb"),
-                       verbose = TRUE
-                     )
-)
-
-
-fit.year.2 <- bru(s_components.year.2,
-                     like(
-                       formula = s_formula,
-                       family = "binomial",
-                       Ntrials = 1,
-                       data = data
-                     ),
-                     options = list(
-                       control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-                       control.inla = list(int.strategy = "eb"),
-                       verbose = TRUE
-                     )
-)
-
-
-fit.year.3 <- bru(s_components.year.3,
-                     like(
-                       formula = s_formula,
-                       family = "binomial",
-                       Ntrials = 1,
-                       data = data
-                     ),
-                     options = list(
-                       control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-                       control.inla = list(int.strategy = "eb"),
-                       verbose = TRUE
-                     )
-)
-
-
-
-
-fit.year.climate.1 <- bru(s_components.year.climate.1,
-                  like(
-                    formula = s_formula,
-                    family = "binomial",
-                    Ntrials = 1,
-                    data = data
-                  ),
-                  options = list(
-                    control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-                    control.inla = list(int.strategy = "eb"),
-                    verbose = TRUE
-                  )
-)
-
-
-fit.year.climate.2 <- bru(s_components.year.climate.2,
-                  like(
-                    formula = s_formula,
-                    family = "binomial",
-                    Ntrials = 1,
-                    data = data
-                  ),
-                  options = list(
-                    control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-                    control.inla = list(int.strategy = "eb"),
-                    verbose = TRUE
-                  )
-)
 
 # components
 components <- c()
-
-components[1] <- as.character(c(fit.1$bru_info$model$effects$fixed$main$input$input))
-components[2] <- as.character(c(fit.2$bru_info$model$effects$fixed$main$input$input))
-components[3] <- as.character(c(fit.3$bru_info$model$effects$fixed$main$input$input))
-components[4] <- as.character(c(fit.4$bru_info$model$effects$fixed$main$input$input))
-components[5] <- as.character(c(fit.5$bru_info$model$effects$fixed$main$input$input))
-components[6] <- as.character(c(fit.6$bru_info$model$effects$fixed$main$input$input))
-components[7] <- as.character(c(fit.7$bru_info$model$effects$fixed$main$input$input))
-components[8] <- as.character(c(fit.8$bru_info$model$effects$fixed$main$input$input))
-components[9] <- as.character(c(fit.9$bru_info$model$effects$fixed$main$input$input))
-components[10] <- as.character(c(fit.climate.1$bru_info$model$effects$fixed$main$input$input))
-components[11] <- as.character(c(fit.climate.2$bru_info$model$effects$fixed$main$input$input))
-components[12] <- as.character(c(fit.year.1$bru_info$model$effects$fixed$main$input$input))
-components[13] <- as.character(c(fit.year.2$bru_info$model$effects$fixed$main$input$input))
-components[14] <- as.character(c(fit.year.3$bru_info$model$effects$fixed$main$input$input))
-components[15] <- as.character(c(fit.year.climate.1$bru_info$model$effects$fixed$main$input$input))
-components[16] <- as.character(c(fit.year.climate.2$bru_info$model$effects$fixed$main$input$input))
-components[17] <- as.character(c(fit.nit.1$bru_info$model$effects$fixed$main$input$input))
-components[18] <- as.character(c(fit.nit.2$bru_info$model$effects$fixed$main$input$input))
-components[19] <- as.character(c(fit.nit.3$bru_info$model$effects$fixed$main$input$input))
-components[20] <- as.character(c(fit.nit.4$bru_info$model$effects$fixed$main$input$input))
-
-
-# DIC
 dic <- c()
-dic[1] <- fit.1$dic$dic
-dic[2] <- fit.2$dic$dic
-dic[3] <- fit.3$dic$dic
-dic[4] <- fit.4$dic$dic
-dic[5] <- fit.5$dic$dic
-dic[6] <- fit.6$dic$dic
-dic[7] <- fit.7$dic$dic
-dic[8] <- fit.8$dic$dic
-dic[9] <- fit.9$dic$dic
-dic[10] <- fit.climate.1$dic$dic
-dic[11] <- fit.climate.2$dic$dic
-dic[12] <- fit.year.1$dic$dic
-dic[13] <- fit.year.2$dic$dic
-dic[14] <- fit.year.3$dic$dic
-dic[15] <- fit.year.climate.1$dic$dic
-dic[16] <- fit.year.climate.2$dic$dic
-dic[17] <- fit.nit.1$dic$dic
-dic[18] <- fit.nit.2$dic$dic
-dic[19] <- fit.nit.3$dic$dic
-dic[20] <- fit.nit.4$dic$dic
-
-
-# waic
 waic <- c()
-waic[1] <- fit.1$waic$waic
-waic[2] <- fit.2$waic$waic
-waic[3] <- fit.3$waic$waic
-waic[4] <- fit.4$waic$waic
-waic[5] <- fit.5$waic$waic
-waic[6] <- fit.6$waic$waic
-waic[7] <- fit.7$waic$waic
-waic[8] <- fit.8$waic$waic
-waic[9] <- fit.9$waic$waic
-waic[10] <- fit.climate.1$waic$waic
-waic[11] <- fit.climate.2$waic$waic
-waic[12] <- fit.year.1$waic$waic
-waic[13] <- fit.year.2$waic$waic
-waic[14] <- fit.year.3$waic$waic
-waic[15] <- fit.year.climate.1$waic$waic
-waic[16] <- fit.year.climate.2$waic$waic
-waic[17] <- fit.nit.1$waic$waic
-waic[18] <- fit.nit.2$waic$waic
-waic[19] <- fit.nit.3$waic$waic
-waic[20] <- fit.nit.4$waic$waic
-
-
-# cpo
 cpo <- c()
-cpo[1] <-  -mean(log(fit.1$cpo$cpo))
-cpo[2] <-  -mean(log(fit.2$cpo$cpo))
-cpo[3] <-  -mean(log(fit.3$cpo$cpo))
-cpo[4] <-  -mean(log(fit.4$cpo$cpo))
-cpo[5] <- -mean(log(fit.5$cpo$cpo))
-cpo[6] <- -mean(log(fit.6$cpo$cpo))
-cpo[7] <- -mean(log(fit.7$cpo$cpo))
-cpo[8] <- -mean(log(fit.8$cpo$cpo))
-cpo[9] <- -mean(log(fit.9$cpo$cpo))
-cpo[10] <-  -mean(log(fit.climate.1$cpo$cpo))
-cpo[11] <-  -mean(log(fit.climate.2$cpo$cpo))
-cpo[12] <-  -mean(log(fit.year.1$cpo$cpo))
-cpo[13] <-  -mean(log(fit.year.2$cpo$cpo))
-cpo[14] <-  -mean(log(fit.year.3$cpo$cpo))
-cpo[15] <- -mean(log(fit.year.climate.1$cpo$cpo))
-cpo[16] <- -mean(log(fit.year.climate.2$cpo$cpo))
-cpo[17] <- -mean(log(fit.nit.1$cpo$cpo))
-cpo[18] <- -mean(log(fit.nit.2$cpo$cpo))
-cpo[19] <- -mean(log(fit.nit.3$cpo$cpo))
-cpo[20] <- -mean(log(fit.nit.4$cpo$cpo))
-
-# checking convergence
 convergence <- c()
-convergence[1] <- fit.1$mode$mode.status
-convergence[2] <- fit.2$mode$mode.status
-convergence[3] <- fit.3$mode$mode.status
-convergence[4] <- fit.4$mode$mode.status
-convergence[5] <- fit.5$mode$mode.status
-convergence[6] <- fit.6$mode$mode.status
-convergence[7] <- fit.7$mode$mode.status
-convergence[8] <- fit.8$mode$mode.status
-convergence[9] <- fit.9$mode$mode.status
-convergence[10] <- fit.climate.1$mode$mode.status
-convergence[11] <- fit.climate.2$mode$mode.status
-convergence[12] <- fit.year.1$mode$mode.status
-convergence[13] <- fit.year.2$mode$mode.status
-convergence[14] <- fit.year.3$mode$mode.status
-convergence[15] <- fit.year.climate.1$mode$mode.status
-convergence[16] <- fit.year.climate.2$mode$mode.status
-convergence[17] <- fit.nit.1$mode$mode.status
-convergence[18] <- fit.nit.2$mode$mode.status
-convergence[19] <- fit.nit.3$mode$mode.status
-convergence[20] <- fit.nit.4$mode$mode.status
+
+for(i in 1:length(fit_list)){
+  # for(i in 1:15){
+  components[i] <- as.character(c(fit_list[[i]]$bru_info$model$effects$fixed$main$input$input))
+  dic[i] <- fit_list[[i]]$dic$dic 
+  waic[i] <- fit_list[[i]]$waic$waic
+  cpo[i] <- -mean(log(fit_list[[i]]$cpo$cpo))
+  convergence[i] <- fit_list[[i]]$mode$mode.status
+}
 
 
 
-# calculating AUC
-
-
-
-# predicting the training data
-validation.1 <- predict(fit.1,newdata = data,
-                        formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-validation.2 <- predict(fit.2,newdata = data,
-                        formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-validation.3 <- predict(fit.3,newdata = data,
-                        formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-validation.4 <- predict(fit.4,newdata = data,
-                        formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-validation.5 <- predict(fit.5,newdata = data,
-                        formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-validation.6 <- predict(fit.6,newdata = data,
-                        formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-validation.7 <- predict(fit.7,newdata = data,
-                        formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-validation.8 <- predict(fit.8,newdata = data,
-                        formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-validation.9 <- predict(fit.9,newdata = data,
-                        formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-
-validation.climate.1 <- predict(fit.1,newdata = data,
-                        formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-validation.climate.2 <- predict(fit.2,newdata = data,
-                        formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-validation.year.1 <- predict(fit.year.1,newdata = data,
-                                formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-validation.year.2 <- predict(fit.year.2,newdata = data,
-                                formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-validation.year.3 <- predict(fit.year.3,newdata = data,
-                             formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-
-validation.year.climate.1 <- predict(fit.year.climate.1,newdata = data,
-                             formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-validation.year.climate.2 <- predict(fit.year.climate.2,newdata = data,
-                                     formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-validation.nit.1 <- predict(fit.nit.1,newdata = data,
-                        formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-validation.nit.2 <- predict(fit.nit.2,newdata = data,
-                        formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-validation.nit.3 <- predict(fit.nit.3,newdata = data,
-                        formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-validation.nit.4 <- predict(fit.nit.4,newdata = data,
-                        formula = ~ invlogit(fixed + scorer + collector + space_int), n.samples = 500) 
-
-
-
-rocobj.1 <- pROC::roc(data$Endo_status_liberal, validation.1$mean)
-rocobj.2 <- pROC::roc(data$Endo_status_liberal, validation.2$mean)
-rocobj.3 <- pROC::roc(data$Endo_status_liberal, validation.3$mean)
-rocobj.4 <- pROC::roc(data$Endo_status_liberal, validation.4$mean)
-rocobj.5 <- pROC::roc(data$Endo_status_liberal, validation.5$mean)
-rocobj.6 <- pROC::roc(data$Endo_status_liberal, validation.6$mean)
-rocobj.7 <- pROC::roc(data$Endo_status_liberal, validation.7$mean)
-rocobj.8 <- pROC::roc(data$Endo_status_liberal, validation.8$mean)
-rocobj.9 <- pROC::roc(data$Endo_status_liberal, validation.9$mean)
-rocobj.10 <- pROC::roc(data$Endo_status_liberal, validation.climate.1$mean)
-rocobj.11 <- pROC::roc(data$Endo_status_liberal, validation.climate.1$mean)
-rocobj.12 <- pROC::roc(data$Endo_status_liberal, validation.year.1$mean)
-rocobj.13 <- pROC::roc(data$Endo_status_liberal, validation.year.2$mean)
-rocobj.14 <- pROC::roc(data$Endo_status_liberal, validation.year.3$mean)
-rocobj.15 <- pROC::roc(data$Endo_status_liberal, validation.year.climate.1$mean)
-rocobj.16 <- pROC::roc(data$Endo_status_liberal, validation.year.climate.2$mean)
-rocobj.17 <- pROC::roc(data$Endo_status_liberal, validation.nit.1$mean)
-rocobj.18 <- pROC::roc(data$Endo_status_liberal, validation.nit.2$mean)
-rocobj.19 <- pROC::roc(data$Endo_status_liberal, validation.nit.3$mean)
-rocobj.20 <- pROC::roc(data$Endo_status_liberal, validation.nit.4$mean)
-
-
-# AUC values
+# getting AUC values
+validation <- list()
+rocobj <- list()
 auc <- c()
-auc[1] <- rocobj.1$auc
-auc[2] <- rocobj.2$auc
-auc[3] <- rocobj.3$auc
-auc[4] <- rocobj.4$auc
-auc[5] <- rocobj.5$auc
-auc[6] <- rocobj.6$auc
-auc[7] <- rocobj.7$auc
-auc[8] <- rocobj.8$auc
-auc[9] <- rocobj.9$auc
-auc[10] <- rocobj.10$auc
-auc[11] <- rocobj.11$auc
-auc[12] <- rocobj.12$auc
-auc[13] <- rocobj.13$auc
-auc[14] <- rocobj.14$auc
-auc[15] <- rocobj.15$auc
-auc[16] <- rocobj.16$auc
-auc[17] <- rocobj.17$auc
-auc[18] <- rocobj.18$auc
-auc[19] <- rocobj.19$auc
-auc[20] <- rocobj.20$auc
+for(i in 1:length(fit_list)){
+  for(i in 1:15){
+  validation[[i]] <- predict(fit_list[[i]], newdata = data,
+                             formula = ~invlogit(fixed + scorer + collector + space_int), n.samples = 250)
+  rocobj[[i]] <- pROC::roc(data$Endo_status_liberal, validation[[i]]$mean)
+  auc[i] <- rocobj[[i]]$auc
+}
+
+
+
 
 # model comparison table
 table <- data.frame(components, dic, waic, cpo, auc, convergence) %>% arrange(dic, waic, cpo, auc) %>% 
@@ -968,9 +754,20 @@ table <- table %>%
 write.csv(table, "Analyses/model.comparison.csv")
 
 
-fill_colors <- RColorBrewer::brewer.pal(4,"Set1")
+# fill_colors <- RColorBrewer::brewer.pal(4,"Set1")
        
-dic_plot <- ggplot(table%>%  select(components, dic, year))+
+dic_plot <- ggplot(table%>%  select(components, dic, year) %>% filter(year == FALSE))+
+  geom_tile(aes(y = components, x = 1, fill = dic), color = "white", alpha = .8)+
+  geom_text(aes(y = components, x = 1, label = dic), size = 3)+
+  labs(x = "DIC",y = "", fill = "DIC",  title = "A")+
+  scale_fill_distiller(palette = "Reds", direction = -1)+
+  guides(fill = "none")+
+  theme_void()+
+  theme(axis.text.y = element_text( size = rel(.6), hjust = 1 ),
+        axis.text.x = element_blank(),
+        axis.title.x = element_text(),
+        plot.margin=grid::unit(c(0,0,0,0), "mm"))
+dic_plot.year <- ggplot(table%>%  select(components, dic, year) %>% filter(year == TRUE))+
   geom_tile(aes(y = components, x = 1, fill = dic), color = "white", alpha = .8)+
   geom_text(aes(y = components, x = 1, label = dic), size = 3)+
   labs(x = "DIC",y = "", fill = "DIC",  title = "A")+
@@ -984,7 +781,18 @@ dic_plot <- ggplot(table%>%  select(components, dic, year))+
 # dic_plot
 
 
-waic_plot <- ggplot(table %>% select(components, waic, year))+
+waic_plot <- ggplot(table %>% select(components, waic, year)%>% filter(year == FALSE))+
+  geom_tile(aes(y = components, x = 1, fill = waic),color = "white", alpha = .8)+
+  geom_text(aes(y = components, x = 1, label = waic), size = 3)+
+  labs(x = "WAIC",y = "", fill = "WAIC",  title = "B")+
+  scale_fill_distiller(palette = "Blues", direction = -1)+
+  guides(fill = "none")+
+  theme_void()+
+  theme(axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title.x = element_text(),
+        plot.margin=grid::unit(c(0,0,0,0), "mm"))
+waic_plot.year <- ggplot(table %>% select(components, waic, year)%>% filter(year == TRUE))+
   geom_tile(aes(y = components, x = 1, fill = waic),color = "white", alpha = .8)+
   geom_text(aes(y = components, x = 1, label = waic), size = 3)+
   labs(x = "WAIC",y = "", fill = "WAIC",  title = "B")+
@@ -997,7 +805,18 @@ waic_plot <- ggplot(table %>% select(components, waic, year))+
         plot.margin=grid::unit(c(0,0,0,0), "mm"))
 # waic_plot
 
-cpo_plot <- ggplot(table %>% select(components, cpo, year))+
+cpo_plot <- ggplot(table %>% select(components, cpo, year)%>% filter(year == FALSE))+
+  geom_tile(aes(y = components, x = 1, fill = cpo),color = "white", alpha = .8)+
+  geom_text(aes(y = components, x = 1, label = cpo), size = 3)+
+  labs(x = "-log(CPO)",y = "", fill = "CPO",  title = "C")+
+  scale_fill_distiller(palette = "Greens", direction = -1)+
+  guides(fill = "none")+
+  theme_void()+
+  theme(axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title.x = element_text(),
+        plot.margin=grid::unit(c(0,0,0,0), "mm"))
+cpo_plot.year <- ggplot(table %>% select(components, cpo, year)%>% filter(year == TRUE))+
   geom_tile(aes(y = components, x = 1, fill = cpo),color = "white", alpha = .8)+
   geom_text(aes(y = components, x = 1, label = cpo), size = 3)+
   labs(x = "-log(CPO)",y = "", fill = "CPO",  title = "C")+
@@ -1011,7 +830,18 @@ cpo_plot <- ggplot(table %>% select(components, cpo, year))+
 # cpo_plot
 
 
-auc_plot <- ggplot(table %>% select(components, auc, year))+
+auc_plot <- ggplot(table %>% select(components, auc, year)%>% filter(year == FALSE))+
+  geom_tile(aes(y = components, x = 1, fill = auc),color = "white", alpha = .8)+
+  geom_text(aes(y = components, x = 1, label = auc), size = 3)+
+  guides(fill = "none")+
+  scale_fill_distiller(palette = "Greys", direction = -1)+
+  theme_void()+
+  labs(x = "AUC", y = "",fill = "AUC", title = "D")+
+  theme(axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title.x = element_text(),
+        plot.margin=grid::unit(c(0,0,0,0), "mm"))
+auc_plot.year <- ggplot(table %>% select(components, auc, year)%>% filter(year == TRUE))+
   geom_tile(aes(y = components, x = 1, fill = auc),color = "white", alpha = .8)+
   geom_text(aes(y = components, x = 1, label = auc), size = 3)+
   guides(fill = "none")+
@@ -1026,5 +856,8 @@ auc_plot <- ggplot(table %>% select(components, auc, year))+
 
 
 model_comparison_plot <- dic_plot + waic_plot + cpo_plot + auc_plot +plot_layout(nrow = 1) 
-ggsave(model_comparison_plot, filename = "Plots/model_comparison_plot.png", width = 12, height = 5)
+model_comparison_plot.year <- dic_plot.year + waic_plot.year + cpo_plot.year + auc_plot.year +plot_layout(nrow = 1) 
+model_comparison <- model_comparison_plot/model_comparison_plot.year
+ggsave(model_comparison, filename = "Plots/model_comparison_plot.png", width = 12, height = 10)
+
 

@@ -220,7 +220,9 @@ data <- endo_herb %>%
          PercentAg = PercentAg - data_summary$PercentAg,
          mean_TIN_10km = mean_TIN_10km - data_summary$mean_TIN_10km,
          tmean_10km = tmean_10km - data_summary$tmean_10km,
-         ppt_10km = ppt_10km - data_summary$ppt_10km)
+         ppt_10km = ppt_10km - data_summary$ppt_10km) %>%  
+  mutate(Spp_index = as.numeric(as.factor(Spp_code))) %>% 
+  filter(!is.na(ppt_10km))
 
 # Build the spatial mesh from the coords for each species and a boundary around each species predicted distribution (eventually from Jacob's work ev)
 coords <- cbind(data$easting, data$northing)
@@ -315,19 +317,18 @@ pc_prec <- list(prior = "pcprec", param = c(1, 0.1))
 # version with all species in one model. Note that we remove the intercept, and then we have to specify that the species is a factor 
 
 # comparing different levels of interactions
-data <- data %>% 
-  mutate(Spp_index = as.numeric(as.factor(Spp_code)))
 
 
 
-s_components <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*mean_TIN_10km*PercentAg*PercentUrban, model = "fixed")+
+
+s_components <-  ~ 0 +  fixed(main = ~ 0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km)^4, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
 
 
 
-s_components.year <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*year*mean_TIN_10km*PercentAg*PercentUrban, model = "fixed")+
+s_components.year <-  ~ 0 +  fixed(main = ~ 0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km)^4, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
@@ -405,6 +406,7 @@ preddata.1 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50)
                      PercentAg = rep(seq(min_ag, max_ag, length.out = 50), times = 3),
                      PercentUrban = 0,
                      mean_TIN_10km = 0,
+                     ppt_10km = 0,
                      year_index = 9999,
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
@@ -414,6 +416,7 @@ preddata.2 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50)
                      PercentAg = 0,
                      PercentUrban = rep(seq(min_urb, max_urb, length.out = 50), times = 3),
                      mean_TIN_10km = 0,
+                     ppt_10km = 0,
                      year_index = 9999,
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
@@ -424,6 +427,7 @@ preddata.3 <- tibble(Spp_code = c(rep("AGHY", times = 50),rep("AGPE",times = 50)
                      PercentAg = 0,
                      PercentUrban = 0,
                      mean_TIN_10km = rep(seq(min_nit, max_nit, length.out = 50), times = 3),
+                     ppt_10km = 0,
                      year_index = 9999,
                      collector_index = 9999, scorer_index = 9999) %>% 
   mutate(species = case_when(Spp_code == "AGHY" ~ species_names[1],
@@ -554,50 +558,27 @@ colnames(posteriors) <- c( paste0("iter",1:n_draws))
 
 posteriors_df <- as_tibble(t(posteriors), rownames = "iteration")
 
-
+colnames(posteriors_df) <- sub("Spp_code", "", colnames(posteriors_df))
+colnames(posteriors_df) <- gsub(":", ".", colnames(posteriors_df))
 
 # Calculate the effects of the predictor, given that the reference level is for AGHY
 effects_df <- posteriors_df %>% 
-  mutate(INT.AGHY = Spp_codeAGHY,
-         INT.AGPE = Spp_codeAGPE,
-         INT.ELVI = Spp_codeELVI,
-         NIT.AGHY = mean_TIN_10km,
-         NIT.AGPE = mean_TIN_10km+`Spp_codeAGPE:mean_TIN_10km`,
-         NIT.ELVI = mean_TIN_10km+`Spp_codeELVI:mean_TIN_10km`,
-         AG.AGHY = PercentAg,
-         AG.AGPE = PercentAg+`Spp_codeAGPE:PercentAg`,
-         AG.ELVI = PercentAg+`Spp_codeELVI:PercentAg`,
-         URB.AGHY = PercentUrban,
-         URB.AGPE = PercentUrban+`Spp_codeAGPE:PercentUrban`,
-         URB.ELVI = PercentUrban+`Spp_codeELVI:PercentUrban`,
-         NITxAG.AGHY = `mean_TIN_10km:PercentAg`,
-         NITxAG.AGPE = `mean_TIN_10km:PercentAg` + `Spp_codeAGPE:mean_TIN_10km:PercentAg`,
-         NITxAG.ELVI = `mean_TIN_10km:PercentAg` + `Spp_codeELVI:mean_TIN_10km:PercentAg`,
-         NITxURB.AGHY= `mean_TIN_10km:PercentUrban`,
-         NITxURB.AGPE = `mean_TIN_10km:PercentUrban` + `Spp_codeAGPE:mean_TIN_10km:PercentUrban`,
-         NITxURB.ELVI = `mean_TIN_10km:PercentUrban` + `Spp_codeELVI:mean_TIN_10km:PercentUrban`,
-         AGxURB.AGHY= `PercentAg:PercentUrban`,
-         AGxURB.AGPE = `PercentAg:PercentUrban` + `Spp_codeAGPE:PercentAg:PercentUrban`,
-         AGxURB.ELVI = `PercentAg:PercentUrban` + `Spp_codeELVI:PercentAg:PercentUrban`,
-         NITxAGxURB.AGHY= `mean_TIN_10km:PercentAg:PercentUrban`,
-         NITxAGxURB.AGPE= `mean_TIN_10km:PercentAg:PercentUrban` + `Spp_codeAGPE:mean_TIN_10km:PercentAg:PercentUrban`,
-         NITxAGxURB.ELVI= `mean_TIN_10km:PercentAg:PercentUrban` + `Spp_codeELVI:mean_TIN_10km:PercentAg:PercentUrban`) %>% 
-  select(-all_of(param_names)) %>% 
+  rename(AGHY.Int = AGHY, AGPE.Int = AGPE, ELVI.Int = ELVI) %>% 
   pivot_longer( cols = -c(iteration), names_to = "param") %>% 
   mutate(model = "No Year") %>% 
-  mutate(spp_label = sub(".*\\.", "", param),
-         param_label = sub("\\..*","", param)) %>% 
-  mutate(param_f = factor(case_when(param_label == "INT" ~ "Intercept",
-                                    param_label == "AG" ~ "Agric. Cover",
-                                    param_label == "URB" ~ "Urban Cover",
-                                    param_label == "NIT" ~ "Nit. Dep.",
-                                    param_label == "NITxAG" ~ "Nit. X Agr.",
-                                    param_label == "NITxURB" ~ "Nit. X Urb.",
-                                    param_label == "AGxURB" ~ "Agr. X Urb.",
-                                    param_label == "NITxAGxURB" ~ "Nit. X Agr. X Urb."), levels = c("Intercept", "Agric. Cover", "Urban Cover", "Nit. Dep.", "Nit. X Agr.", "Nit. X Urb.", "Agr. X Urb.", "Nit. X Agr. X Urb.")),
+  mutate(param_label = sub("^[^.]+.", "", param),
+         spp_label = sub("\\..*","", param)) %>% 
+  mutate(param_f = factor(str_replace_all(param_label, c("\\." = " X ",
+                                                         "Int" = "Intercept",
+                                                         "PercentAg" = "Agr.",
+                                                         "PercentUrban" = "Urb.",
+                                                         "mean_TIN_10km" = "Nit.",
+                                                         "ppt_10km" = "PPT.")),
+                          levels = unique(effects_df$param_f)),
          spp_f = factor(case_when(spp_label == "ELVI" ~ "E. virginicus", spp_label == "AGPE" ~ "A. perennans", spp_label == "AGHY" ~ "A. hyemalis"),
-                        levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus")))
-  )
+                         levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus"))))
+
+
 
 
 
@@ -612,17 +593,17 @@ posterior_hist <- ggplot(effects_df)+
   # geom_linerange(data = posteriors_summary, aes(xmin = lwr, xmax = upr, y = spp_label, color = spp_label))+
   
   geom_vline(xintercept = 0)+
-  facet_wrap(~param_f, scales = "free_x", nrow = 2)+
+  facet_wrap(~param_f, scales = "free_x", ncol = 4)+
   labs(x = "Posterior Est.", y = "Species")+
   guides(fill = "none")+
   scale_color_manual(values = species_colors)+
   scale_fill_manual(values = species_colors)+
-  scale_x_continuous(labels = scales::label_number(), guide = guide_axis(check.overlap = TRUE))+
+  scale_x_continuous(labels = scales::label_scientific(), guide = guide_axis(check.overlap = TRUE))+
   theme_bw() + theme(axis.text.y = element_text(face = "italic"),
                      axis.text.x = element_text(size = rel(.8)))
 
 # posterior_hist
-ggsave(posterior_hist, filename = "Plots/posterior_hist.png", width = 9, height = 5)
+ggsave(posterior_hist, filename = "Plots/posterior_hist.png", width = 9, height = 9)
 
 
 
@@ -656,7 +637,7 @@ ggsave(ROC_training_plot, filename = "Plots/ROC_training_plot.png", width = 4, h
 
 # AUC values
 rocobj$auc
-# 0.7555
+# 0.8214
 
 
 # generating posterior samples of each parameter
@@ -674,7 +655,7 @@ n_post_draws <- 250
 y_sim <- matrix(NA,n_post_draws,length(data$Endo_status_liberal))
 
 for(i in 1:n_post_draws){
-  y_sim[i,] <- rbinom(n = length(endo_herb$Endo_status_liberal), size = 1, prob = posterior_samples[,i])
+  y_sim[i,] <- rbinom(n = length(data$Endo_status_liberal), size = 1, prob = posterior_samples[,i])
 }
 
 # saveRDS(y_sim, file = "y_sim.rds")
@@ -716,19 +697,22 @@ preddata_aghy <- expand.grid(Spp_code = c("AGHY"),
                              year = quantile_summary[quantile_summary$Spp_code == "AGHY",]$min_year:quantile_summary[quantile_summary$Spp_code == "AGHY",]$max_year,
                              mean_TIN_10km = c(quantile_summary[quantile_summary$Spp_code == "AGHY",]$min_nit,quantile_summary[quantile_summary$Spp_code == "AGHY",]$max_nit),
                              PercentAg = 0,
-                             PercentUrban = 0)
+                             PercentUrban = 0,
+                             tmean_10km = 0)
 preddata_agpe <- expand.grid(Spp_code = c("AGPE"), 
                              # year = sort(unique(data$year)),
                              year = quantile_summary[quantile_summary$Spp_code == "AGPE",]$min_year:quantile_summary[quantile_summary$Spp_code == "AGPE",]$max_year,
                              mean_TIN_10km = c(quantile_summary[quantile_summary$Spp_code == "AGPE",]$min_nit,quantile_summary[quantile_summary$Spp_code == "AGPE",]$max_nit),
                              PercentAg = 0,
-                             PercentUrban = 0)
+                             PercentUrban = 0,
+                             tmean_10km = 0)
 preddata_elvi <- expand.grid(Spp_code = c("ELVI"), 
                              # year = sort(unique(data$year)),
                              year = quantile_summary[quantile_summary$Spp_code == "ELVI",]$min_year:quantile_summary[quantile_summary$Spp_code == "ELVI",]$max_year,
                              mean_TIN_10km = c(quantile_summary[quantile_summary$Spp_code == "ELVI",]$min_nit,quantile_summary[quantile_summary$Spp_code == "ELVI",]$max_nit),
                              PercentAg = 0,
-                             PercentUrban = 0)
+                             PercentUrban = 0,
+                             tmean_10km = 0)
 
 preddata <- bind_rows(preddata_aghy, preddata_agpe, preddata_elvi) %>% 
   mutate(collector_index = 9999, scorer_index = 9999,
@@ -816,17 +800,20 @@ preddata_aghy <- expand.grid(Spp_code = c("AGHY"),
                              year = seq(quantile_summary[quantile_summary$Spp_code == "AGHY",]$min_year, quantile_summary[quantile_summary$Spp_code == "AGHY",]$max_year, length.out = 20), 
                              mean_TIN_10km = 0,
                              PercentAg = c(quantile_summary[quantile_summary$Spp_code == "AGHY",]$min_ag, quantile_summary[quantile_summary$Spp_code == "AGHY",]$max_ag),
-                             PercentUrban = 0)
+                             PercentUrban = 0,
+                             tmean_10km = 0)
 preddata_agpe <- expand.grid(Spp_code = c("AGPE"), 
                              year = seq(quantile_summary[quantile_summary$Spp_code == "AGPE",]$min_year, quantile_summary[quantile_summary$Spp_code == "AGPE",]$max_year, length.out = 20), 
                              mean_TIN_10km = 0,
                              PercentAg = c(quantile_summary[quantile_summary$Spp_code == "AGPE",]$min_ag, quantile_summary[quantile_summary$Spp_code == "AGPE",]$max_ag),
-                             PercentUrban = 0)
+                             PercentUrban = 0,
+                             tmean_10km = 0)
 preddata_elvi <- expand.grid(Spp_code = c("ELVI"), 
                              year = seq(quantile_summary[quantile_summary$Spp_code == "ELVI",]$min_year, quantile_summary[quantile_summary$Spp_code == "ELVI",]$max_year, length.out = 20), 
                              mean_TIN_10km = 0,
                              PercentAg = c(quantile_summary[quantile_summary$Spp_code == "ELVI",]$min_ag, quantile_summary[quantile_summary$Spp_code == "ELVI",]$max_ag),
-                             PercentUrban = 0)
+                             PercentUrban = 0,
+                             tmean_10km = 0)
 
 preddata <- bind_rows(preddata_aghy, preddata_agpe, preddata_elvi) %>% 
   mutate(collector_index = 9999, scorer_index = 9999,
@@ -894,7 +881,7 @@ ag_yr_trend <- ggplot(year.ag.pred)+
         legend.position = "bottom", legend.box = "vertical")+
   lims(y = c(0,1), x = c(1832, 2020))
 
-# ag_yr_trend
+ag_yr_trend
 # ggsave(ag_yr_trend, filename = "Agriculture_and_Year.png", width = 6, height = 8)
 
 
@@ -916,17 +903,20 @@ preddata_aghy <- expand.grid(Spp_code = c("AGHY"),
                              year = seq(quantile_summary[quantile_summary$Spp_code == "AGHY",]$min_year, quantile_summary[quantile_summary$Spp_code == "AGHY",]$max_year, length.out = 20), 
                              mean_TIN_10km = 0,
                              PercentAg = 0,
-                             PercentUrban = c(quantile_summary[quantile_summary$Spp_code == "AGHY",]$min_urb, quantile_summary[quantile_summary$Spp_code == "AGHY",]$max_urb))
+                             PercentUrban = c(quantile_summary[quantile_summary$Spp_code == "AGHY",]$min_urb, quantile_summary[quantile_summary$Spp_code == "AGHY",]$max_urb),
+                             tmean_10km = 0)
 preddata_agpe <- expand.grid(Spp_code = c("AGPE"), 
                              year = seq(quantile_summary[quantile_summary$Spp_code == "AGPE",]$min_year, quantile_summary[quantile_summary$Spp_code == "AGPE",]$max_year, length.out = 20), 
                              mean_TIN_10km = 0,
                              PercentAg = 0,
-                             PercentUrban = c(quantile_summary[quantile_summary$Spp_code == "AGPE",]$min_urb, quantile_summary[quantile_summary$Spp_code == "AGPE",]$max_urb))
+                             PercentUrban = c(quantile_summary[quantile_summary$Spp_code == "AGPE",]$min_urb, quantile_summary[quantile_summary$Spp_code == "AGPE",]$max_urb),
+                             tmean_10km = 0)
 preddata_elvi <- expand.grid(Spp_code = c("ELVI"), 
                              year = seq(quantile_summary[quantile_summary$Spp_code == "ELVI",]$min_year, quantile_summary[quantile_summary$Spp_code == "ELVI",]$max_year, length.out = 20), 
                              mean_TIN_10km = 0,
                              PercentAg = 0,
-                             PercentUrban = c(quantile_summary[quantile_summary$Spp_code == "ELVI",]$min_urb, quantile_summary[quantile_summary$Spp_code == "ELVI",]$max_urb))
+                             PercentUrban = c(quantile_summary[quantile_summary$Spp_code == "ELVI",]$min_urb, quantile_summary[quantile_summary$Spp_code == "ELVI",]$max_urb),
+                             tmean_10km = 0)
 
 preddata <- bind_rows(preddata_aghy, preddata_agpe, preddata_elvi) %>% 
   mutate(collector_index = 9999, scorer_index = 9999,
@@ -995,7 +985,7 @@ urb_yr_trend <- ggplot(year.urb.pred)+
         legend.position = "bottom", legend.box = "vertical")+
   lims(y = c(0,1), x = c(1832, 2020))
 
-# urb_yr_trend
+urb_yr_trend
 # ggsave(urb_yr_trend, filename = "Urban_and_Year.png", width = 6, height = 8)
 
 
@@ -1035,84 +1025,25 @@ colnames(posteriors) <- c( paste0("iter",1:n_draws))
 posteriors_df <- as_tibble(t(posteriors), rownames = "iteration")
 
 
+colnames(posteriors_df) <- sub("Spp_code", "", colnames(posteriors_df))
+colnames(posteriors_df) <- gsub(":", ".", colnames(posteriors_df))
 
 # Calculate the effects of the predictor, given that the reference level is for AGHY
 effects_df <- posteriors_df %>% 
-  mutate(INT.AGHY = Spp_codeAGHY,
-         INT.AGPE = Spp_codeAGPE,
-         INT.ELVI = Spp_codeELVI,
-         NIT.AGHY = mean_TIN_10km,
-         NIT.AGPE = mean_TIN_10km+`Spp_codeAGPE:mean_TIN_10km`,
-         NIT.ELVI = mean_TIN_10km+`Spp_codeELVI:mean_TIN_10km`,
-         AG.AGHY = PercentAg,
-         AG.AGPE = PercentAg+`Spp_codeAGPE:PercentAg`,
-         AG.ELVI = PercentAg+`Spp_codeELVI:PercentAg`,
-         URB.AGHY = PercentUrban,
-         URB.AGPE = PercentUrban+`Spp_codeAGPE:PercentUrban`,
-         URB.ELVI = PercentUrban+`Spp_codeELVI:PercentUrban`,
-         NITxAG.AGHY = `mean_TIN_10km:PercentAg`,
-         NITxAG.AGPE = `mean_TIN_10km:PercentAg` + `Spp_codeAGPE:mean_TIN_10km:PercentAg`,
-         NITxAG.ELVI = `mean_TIN_10km:PercentAg` + `Spp_codeELVI:mean_TIN_10km:PercentAg`,
-         NITxURB.AGHY= `mean_TIN_10km:PercentUrban`,
-         NITxURB.AGPE = `mean_TIN_10km:PercentUrban` + `Spp_codeAGPE:mean_TIN_10km:PercentUrban`,
-         NITxURB.ELVI = `mean_TIN_10km:PercentUrban` + `Spp_codeELVI:mean_TIN_10km:PercentUrban`,
-         AGxURB.AGHY= `PercentAg:PercentUrban`,
-         AGxURB.AGPE = `PercentAg:PercentUrban` + `Spp_codeAGPE:PercentAg:PercentUrban`,
-         AGxURB.ELVI = `PercentAg:PercentUrban` + `Spp_codeELVI:PercentAg:PercentUrban`,
-         NITxAGxURB.AGHY= `mean_TIN_10km:PercentAg:PercentUrban`,
-         NITxAGxURB.AGPE= `mean_TIN_10km:PercentAg:PercentUrban` + `Spp_codeAGPE:mean_TIN_10km:PercentAg:PercentUrban`,
-         NITxAGxURB.ELVI= `mean_TIN_10km:PercentAg:PercentUrban` + `Spp_codeELVI:mean_TIN_10km:PercentAg:PercentUrban`,
-         YEAR.AGHY = `year`,
-         YEAR.AGPE = `year`+`Spp_codeAGPE:year`,
-         YEAR.ELVI = `year`+`Spp_codeELVI:year`, 
-         YEARxAG.AGHY = `year:PercentAg`,
-         YEARxAG.AGPE = `year:PercentAg`+`Spp_codeAGPE:year:PercentAg`,
-         YEARxAG.ELVI = `year:PercentAg`+`Spp_codeELVI:year:PercentAg`,  
-         YEARxURB.AGHY = `year:PercentUrban`,
-         YEARxURB.AGPE = `year:PercentUrban`+`Spp_codeAGPE:year:PercentUrban`,
-         YEARxURB.ELVI = `year:PercentUrban`+`Spp_codeELVI:year:PercentUrban`, 
-         YEARxNIT.AGHY = `year:mean_TIN_10km`,
-         YEARxNIT.AGPE = `year:mean_TIN_10km`+`Spp_codeAGPE:year:mean_TIN_10km`,
-         YEARxNIT.ELVI = `year:mean_TIN_10km`+`Spp_codeELVI:year:mean_TIN_10km`, 
-         YEARxNITxAG.AGHY = `year:mean_TIN_10km:PercentAg`,
-         YEARxNITxAG.AGPE = `year:mean_TIN_10km:PercentAg`+`Spp_codeAGPE:year:mean_TIN_10km:PercentAg`,
-         YEARxNITxAG.ELVI = `year:mean_TIN_10km:PercentAg`+`Spp_codeELVI:year:mean_TIN_10km:PercentAg`, 
-         YEARxNITxURB.AGHY = `year:mean_TIN_10km:PercentUrban`,
-         YEARxNITxURB.AGPE = `year:mean_TIN_10km:PercentUrban`+`Spp_codeAGPE:year:mean_TIN_10km:PercentUrban`,
-         YEARxNITxURB.ELVI = `year:mean_TIN_10km:PercentUrban`+`Spp_codeELVI:year:mean_TIN_10km:PercentUrban`, 
-         YEARxAGxURB.AGHY = `year:PercentAg:PercentUrban`,
-         YEARxAGxURB.AGPE = `year:PercentAg:PercentUrban`+`Spp_codeAGPE:year:PercentAg:PercentUrban`,
-         YEARxAGxURB.ELVI = `year:PercentAg:PercentUrban`+`Spp_codeELVI:year:PercentAg:PercentUrban`, 
-         YEARxNITxAGxURB.AGHY = `year:mean_TIN_10km:PercentAg:PercentUrban`,
-         YEARxNITxAGxURB.AGPE = `year:mean_TIN_10km:PercentAg:PercentUrban`+`Spp_codeAGPE:year:mean_TIN_10km:PercentAg:PercentUrban`,
-         YEARxNITxAGxURB.ELVI = `year:mean_TIN_10km:PercentAg:PercentUrban`+`Spp_codeELVI:year:mean_TIN_10km:PercentAg:PercentUrban`) %>% 
-  select(-all_of(param_names)) %>% 
+  rename(AGHY.year = year, AGHY.Int = AGHY, AGPE.Int = AGPE, ELVI.Int = ELVI) %>% 
   pivot_longer( cols = -c(iteration), names_to = "param") %>% 
-  mutate(model = "No Year") %>% 
-  mutate(spp_label = sub(".*\\.", "", param),
-         param_label = sub("\\..*","", param)) %>% 
-  mutate(param_f = factor(case_when(param_label == "INT" ~ "Intercept",
-                                    param_label == "AG" ~ "Agric. Cover",
-                                    param_label == "URB" ~ "Urban Cover",
-                                    param_label == "NIT" ~ "Nit. Dep.",
-                                    param_label == "NITxAG" ~ "Nit. X Agr.",
-                                    param_label == "NITxURB" ~ "Nit. X Urb.",
-                                    param_label == "AGxURB" ~ "Agr. X Urb.",
-                                    param_label == "NITxAGxURB" ~ "Nit. X Agr. X Urb.",
-                                    param_label == "YEAR" ~ "Year",
-                                    param_label == "YEARxNIT" ~ "Year X Nit.",
-                                    param_label == "YEARxAG" ~ "Year X Agr.",
-                                    param_label == "YEARxURB" ~ "Year X Urb.",
-                                    param_label == "YEARxNITxAG" ~ "Year X Nit. X Agr.",
-                                    param_label == "YEARxNITxURB" ~ "Year X Nit. X Urb.",
-                                    param_label == "YEARxAGxURB" ~ "Year X Agr. X Urb.",
-                                    param_label == "YEARxNITxAGxURB" ~ "Year X Nit. X Agr. X Urb."), levels = c("Intercept", "Agric. Cover", "Urban Cover", "Nit. Dep.", 
-                                                                                                                "Nit. X Agr.", "Nit. X Urb.", "Agr. X Urb.", "Nit. X Agr. X Urb.",
-                                                                                                                "Year", "Year X Nit.", "Year X Agr.", "Year X Urb.", "Year X Nit. X Agr.", "Year X Nit. X Urb.", "Year X Agr. X Urb.", "Year X Nit. X Agr. X Urb.")),
+  mutate(model = "Year") %>% 
+  mutate(param_label = sub("^[^.]+.", "", param),
+         spp_label = sub("\\..*","", param)) %>% 
+  mutate(param_f = factor(str_replace_all(param_label, c("\\." = " X ",
+                                                         "Int" = "Intercept",
+                                                         "year" = "Year",
+                                                         "PercentAg" = "Agr.",
+                                                         "PercentUrban" = "Urb.",
+                                                         "mean_TIN_10km" = "Nit.",
+                                                         "tmean_10km" = "Temp."))),
          spp_f = factor(case_when(spp_label == "ELVI" ~ "E. virginicus", spp_label == "AGPE" ~ "A. perennans", spp_label == "AGHY" ~ "A. hyemalis"),
-                        levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus")))
-  )
-
+                        levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus"))))
 
 
 
@@ -1188,7 +1119,8 @@ ag_urb.preddata.aghy <- expand.grid(Spp_code = "AGHY",
                              year = c(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_year, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_year),
                              PercentAg = seq(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_ag, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_ag, length.out = 100),
                              PercentUrban = seq(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_urb, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_urb, length.out = 100),
-                             mean_TIN_10km = 0)  %>% 
+                             mean_TIN_10km = 0,
+                             tmean_10km = 0)  %>% 
   st_as_sf(coords = c("PercentAg", "PercentUrban"), remove = FALSE)  
 ag_urb.aghy_within <- st_within( ag_urb.preddata.aghy, ag_urb_hull.aghy, sparse = FALSE)
 ag_urb.preddata.aghy <- ag_urb.preddata.aghy[ag_urb.aghy_within,]
@@ -1198,7 +1130,8 @@ ag_urb.preddata.agpe <- expand.grid(Spp_code = "AGPE",
                              year = c(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_year, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_year),
                              PercentAg = seq(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_ag, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_ag, length.out = 100),
                              PercentUrban = seq(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_urb, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_urb, length.out = 100),
-                             mean_TIN_10km = 0) %>% 
+                             mean_TIN_10km = 0,
+                             tmean_10km = 0) %>% 
   st_as_sf(coords = c("PercentAg", "PercentUrban"), remove = FALSE)  
 ag_urb.agpe_within <- st_within( ag_urb.preddata.agpe, ag_urb_hull.agpe, sparse = FALSE)
 ag_urb.preddata.agpe <- ag_urb.preddata.agpe[ag_urb.agpe_within,]
@@ -1208,7 +1141,8 @@ ag_urb.preddata.elvi <- expand.grid(Spp_code = "ELVI",
                              year = c(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_year, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_year),
                              PercentAg = seq(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_ag, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_ag, length.out = 100),
                              PercentUrban = seq(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_urb, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_urb, length.out = 100),
-                             mean_TIN_10km = 0) %>% 
+                             mean_TIN_10km = 0,
+                             tmean_10km = 0) %>% 
   st_as_sf(coords = c("PercentAg", "PercentUrban"), remove = FALSE)  
 ag_urb.elvi_within <- st_within( ag_urb.preddata.elvi, ag_urb_hull.elvi, sparse = FALSE)
 ag_urb.preddata.elvi <- ag_urb.preddata.elvi[ag_urb.elvi_within,]
@@ -1269,7 +1203,8 @@ ag_nit.preddata.aghy <- expand.grid(Spp_code = "AGHY",
                              year = c(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_year, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_year),
                              PercentAg = seq(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_ag, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_ag, length.out = 100),
                              PercentUrban = 0,
-                             mean_TIN_10km = seq(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_nit, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_nit, length.out = 100)) %>% 
+                             mean_TIN_10km = seq(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_nit, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_nit, length.out = 100),
+                             tmean_10km = 0) %>% 
   st_as_sf(coords = c("PercentAg", "mean_TIN_10km"), remove = FALSE)  
 ag_nit.aghy_within <- st_within( ag_nit.preddata.aghy, ag_nit_hull.aghy, sparse = FALSE)
 ag_nit.preddata.aghy <- ag_nit.preddata.aghy[ag_nit.aghy_within,]
@@ -1279,7 +1214,8 @@ ag_nit.preddata.agpe <- expand.grid(Spp_code = "AGPE",
                              year = c(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_year, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_year),
                              PercentAg = seq(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_ag, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_ag, length.out = 100),
                              PercentUrban = 0,
-                             mean_TIN_10km = seq(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_nit, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_nit, length.out = 100)) %>% 
+                             mean_TIN_10km = seq(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_nit, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_nit, length.out = 100),
+                             tmean_10km = 0) %>% 
   st_as_sf(coords = c("PercentAg", "mean_TIN_10km"), remove = FALSE)  
 ag_nit.agpe_within <- st_within( ag_nit.preddata.agpe, ag_nit_hull.agpe, sparse = FALSE)
 ag_nit.preddata.agpe <- ag_nit.preddata.agpe[ag_nit.agpe_within,]
@@ -1289,7 +1225,8 @@ ag_nit.preddata.elvi <- expand.grid(Spp_code = "ELVI",
                              year = c(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_year, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_year),
                              PercentAg = seq(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_ag, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_ag, length.out = 100),
                              PercentUrban = 0,
-                             mean_TIN_10km = seq(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_nit, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_nit, length.out = 100)) %>% 
+                             mean_TIN_10km = seq(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_nit, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_nit, length.out = 100),
+                             tmean_10km = 0) %>% 
   st_as_sf(coords = c("PercentAg", "mean_TIN_10km"), remove = FALSE)  
 ag_nit.elvi_within <- st_within( ag_nit.preddata.elvi, ag_nit_hull.elvi, sparse = FALSE)
 ag_nit.preddata.elvi <- ag_nit.preddata.elvi[ag_nit.elvi_within,]
@@ -1335,7 +1272,7 @@ urb_nit_coords <- data %>%
   as_tibble() %>% 
   st_as_sf(coords = c('PercentUrban', 'mean_TIN_10km'), remove = FALSE) 
 
-urb_nit.aghy <- fm_extensions(urb_nit_coords%>% filter(Spp_code == "AGHY"),convex = c(5, 5),concave = c(5, 5)) 
+urb_nit.aghy <- fm_extensions(urb_nit_coords%>% filter(Spp_code == "AGHY"),convex = c(20, 20),concave = c(20, 20)) 
 urb_nit.agpe <- fm_extensions(urb_nit_coords%>% filter(Spp_code == "AGPE"),convex = c(5, 5),concave = c(5, 5)) 
 urb_nit.elvi <- fm_extensions(urb_nit_coords%>% filter(Spp_code == "ELVI"),convex = c(5, 5),concave = c(5, 5)) 
 

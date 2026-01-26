@@ -1,21 +1,31 @@
 "","components","dic","waic","cpo","auc","convergence","year"
-"1","~0 + Spp_code * mean_TIN_10km * PercentAg * PercentUrban",2650.2186,2652.7453,0.6027,0.7537,0,FALSE
-"2","~0 + Spp_code * year * mean_TIN_10km * PercentAg * PercentUrban",2656.8454,2662.9736,0.6052,0.7632,0,TRUE
-"3","~0 + Spp_code * PercentAg * mean_TIN_10km",2657.5213,2658.0408,0.6039,0.7706,0,FALSE
-"4","~0 + Spp_code * PercentUrban * mean_TIN_10km",2660.502,2661.3009,0.6046,0.7496,0,FALSE
-"5","~0 + Spp_code * mean_TIN_10km + Spp_code * PercentAg + Spp_code * PercentUrban",2663.4114,2664.1829,0.6052,0.7475,0,FALSE
-"6","~0 + Spp_code * ppt_10km * mean_TIN_10km",2664.4787,2665.9607,0.6057,0.7642,0,FALSE
-"7","~0 + Spp_code * mean_TIN_10km + Spp_code * PercentAg + Spp_code * PercentUrban + Spp_code * tmean_10km + Spp_code * ppt_10km",2665.2656,2666.5266,0.6059,0.7354,0,FALSE
-"8","~0 + Spp_code * mean_TIN_10km",2667.9789,2668.1319,0.6062,0.7679,0,FALSE
-"9","~0 + Spp_code * tmean_10km * mean_TIN_10km",2668.6376,2670.0098,0.6067,0.7693,0,FALSE
-"10","~0 + Spp_code * year * mean_TIN_10km + Spp_code * year * PercentAg + Spp_code * year * PercentUrban",2670.7462,2672.9339,0.6073,0.7492,0,TRUE
-"11","~0 + Spp_code + year + mean_TIN_10km + PercentAg + PercentUrban",2672.2024,2672.6089,0.6072,0.7431,0,TRUE
-"12","~0 + Spp_code * year * mean_TIN_10km + Spp_code * year * PercentAg + Spp_code * year * PercentUrban + Spp_code * year * tmean_10km + Spp_code * year * ppt_10km",2672.7106,2676.6534,0.6081,0.751,0,TRUE
-"13","~0 + Spp_code + year + mean_TIN_10km + PercentAg + PercentUrban + tmean_10km + ppt_10km",2673.135,2673.7568,0.6074,0.7409,0,TRUE
-"14","~0 + Spp_code + mean_TIN_10km + PercentAg + PercentUrban",2677.7716,2678.0428,0.6084,0.7458,0,FALSE
-"15","~0 + Spp_code + mean_TIN_10km + PercentAg + PercentUrban + tmean_10km + ppt_10km",2678.6598,2679.2471,0.6087,0.7354,0,FALSE
-"16","~0 + Spp_code * PercentUrban",2690.5131,2691.5093,0.6115,0.7391,0,FALSE
-"17","~0 + Spp_code",2695.6451,2696.2762,0.6125,0.7356,0,FALSE
-"18","~0 + Spp_code * PercentAg",2695.797,2696.5448,0.6126,0.7348,0,FALSE
-"19","~0 + Spp_code * ppt_10km",2698.4997,2699.012,0.6132,0.7335,0,FALSE
-"20","~0 + Spp_code * tmean_10km",2698.5702,2699.561,0.6133,0.7341,0,FALSE
+"1","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km)^4",2634.212,2639.8278,0.6001,0.7877,0,FALSE
+"2","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban)^3",2644.3865,2646.0894,0.6013,0.7819,0,FALSE
+"3","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km)^2",2644.9419,2647.4015,0.6016,0.7777,0,FALSE
+"4","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km + tmean_10km)^4",2645.1885,2662.7467,0.6074,0.8023,0,FALSE
+"5","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km)^3",2645.9242,2650.7641,0.6025,0.784,0,FALSE
+"6","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + tmean_10km)^4",2647.8205,2654.3218,0.6033,0.7623,0,FALSE
+"7","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban)",2650.5979,2650.6664,0.6023,0.7808,0,FALSE
+"8","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + tmean_10km)",2651.6558,2652.3017,0.6027,0.78,0,FALSE
+"9","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km)^4",2652.6997,2671.4133,0.6104,0.8066,0,TRUE
+"10","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban)^2",2652.7796,2654.4793,0.6031,0.751,0,FALSE
+"11","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km)^3",2652.8067,2664.3113,0.6063,0.7956,0,TRUE
+"12","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km)",2653.0458,2653.7514,0.603,0.7817,0,TRUE
+"13","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km + tmean_10km)^2",2653.0499,2662.1706,0.6052,0.7859,0,TRUE
+"14","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km + tmean_10km)",2653.425,2654.61,0.6032,0.7832,0,TRUE
+"15","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km + tmean_10km)",2654.7355,2655.5059,0.6034,0.7804,0,FALSE
+"16","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km)^2",2654.8665,2660.3086,0.6047,0.7802,0,TRUE
+"17","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km)",2654.9168,2655.1683,0.6033,0.7792,0,FALSE
+"18","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km + tmean_10km)^2",2655.2261,2660.986,0.6048,0.7784,0,FALSE
+"19","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + tmean_10km)^3",2655.6119,2661.3546,0.6048,0.7582,0,FALSE
+"20","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km + tmean_10km)^3",2656.1909,2668.0424,0.6071,0.7923,0,FALSE
+"21","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + tmean_10km)^2",2657.5908,2660.9376,0.6047,0.7776,0,FALSE
+"22","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year)^3",2658.0715,2663.4795,0.6055,0.7845,0,TRUE
+"23","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year)^2",2658.7031,2661.7848,0.6048,0.7557,0,TRUE
+"24","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + tmean_10km)^2",2658.754,2665.0502,0.6056,0.76,0,TRUE
+"25","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year)",2661.0222,2662.116,0.6048,0.7492,0,TRUE
+"26","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + tmean_10km)",2662.2291,2663.7515,0.6052,0.7471,0,TRUE
+"27","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km + tmean_10km)^3",2669.0263,2694.3501,0.6169,0.8071,0,TRUE
+"28","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + tmean_10km)^3",2677.7992,2690.0721,0.6123,0.7668,0,TRUE
+"29","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + tmean_10km)^4",2683.9295,2701.2832,0.6158,0.7724,0,TRUE
+"30","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km + tmean_10km)^4",2714.6289,2790.1375,0.6826,0.8259,0,TRUE
