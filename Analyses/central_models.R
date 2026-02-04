@@ -189,7 +189,12 @@ endo_herb_sf<- endo_herb %>%
 climate <- read_csv(file = paste0(path,"PRISM_yearly_df.csv")) %>% 
   pivot_wider(id_cols = c(lon, lat, year), names_from = c("buffer"), values_from = c("tmean", "ppt"))
 
-endo_herb <- left_join(endo_herb_sf, climate, by = c("lon", "lat", "year"))
+endo_herb <- left_join(endo_herb_sf, climate, by = c("lon", "lat", "year")) %>% 
+  filter(year>=1895) %>% 
+  filter(seed_scored != 0) %>% 
+  filter(Sample_id != "BRIT_AGHY_506") %>% # dropping this because the georeferenceing is wrong
+  filter(!(Sample_id == "AM_ELVI_122" & is.na(Municipality))) %>% 
+  dplyr::distinct(Sample_id, score_number, .keep_all = TRUE)
 
 
 
@@ -273,7 +278,7 @@ mesh_plot <- ggplot() +
   labs(x = "", y = "", color = "Species")+
   theme(legend.text = element_text(face = "italic"))
 # mesh_plot
-ggsave(mesh_plot, filename = "Plots/mesh_plot.png", width = 6, height = 5)
+# ggsave(mesh_plot, filename = "Plots/mesh_plot.png", width = 6, height = 5)
 
 
 
@@ -328,7 +333,7 @@ s_components <-  ~ 0 +  fixed(main = ~ 0 + Spp_code/(mean_TIN_10km + PercentAg +
 
 
 
-s_components.year <-  ~ 0 +  fixed(main = ~ 0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km)^4, model = "fixed")+
+s_components.year <-  ~ 0 +  fixed(main = ~ 0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km)^3, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
@@ -637,7 +642,7 @@ ggsave(ROC_training_plot, filename = "Plots/ROC_training_plot.png", width = 4, h
 
 # AUC values
 rocobj$auc
-# 0.8214
+# 0.7983
 
 
 # generating posterior samples of each parameter
@@ -985,7 +990,7 @@ urb_yr_trend <- ggplot(year.urb.pred)+
         legend.position = "bottom", legend.box = "vertical")+
   lims(y = c(0,1), x = c(1832, 2020))
 
-urb_yr_trend
+# urb_yr_trend
 # ggsave(urb_yr_trend, filename = "Urban_and_Year.png", width = 6, height = 8)
 
 
@@ -1058,7 +1063,7 @@ posterior_hist <- ggplot(effects_df)+
   # geom_linerange(data = posteriors_summary, aes(xmin = lwr, xmax = upr, y = spp_label, color = spp_label))+
   
   geom_vline(xintercept = 0)+
-  facet_wrap(~param_f, scales = "free_x", ncol = 6)+
+  facet_wrap(~param_f, scales = "free_x", ncol = 4)+
   labs(x = "Posterior Est.", y = "Species")+
   guides(fill = "none")+
   scale_color_manual(values = species_colors)+
@@ -1068,7 +1073,7 @@ posterior_hist <- ggplot(effects_df)+
                      axis.text.x = element_text(size = rel(.8)))
 
 # posterior_hist
-ggsave(posterior_hist, filename = "Plots/posterior_hist_yearmodel.png", width = 12, height = 12)
+ggsave(posterior_hist, filename = "Plots/posterior_hist_yearmodel.png", width = 9, height = 11)
 
 
 
@@ -1190,11 +1195,12 @@ ag_urb.year.pred_df <- tibble(ag_urb.preddata, as_tibble(ag_urb.year.pred)) %>%
 ag_nit_coords <- data %>% 
   select(-geometry) %>% 
   as_tibble() %>% 
-  st_as_sf(coords = c('PercentAg', 'mean_TIN_10km'), remove = FALSE) 
+  mutate(TIN_tenth = mean_TIN_10km/10) %>% 
+  st_as_sf(coords = c('PercentAg', 'TIN_tenth'), remove = FALSE) 
 
-ag_nit.aghy <- fm_extensions(ag_nit_coords%>% filter(Spp_code == "AGHY"),convex = c(25, 25),concave = c(25, 25)) 
-ag_nit.agpe <- fm_extensions(ag_nit_coords%>% filter(Spp_code == "AGPE"),convex = c(25, 25),concave = c(25, 25)) 
-ag_nit.elvi <- fm_extensions(ag_nit_coords%>% filter(Spp_code == "ELVI"),convex = c(25, 25),concave = c(25, 25)) 
+ag_nit.aghy <- fm_extensions(ag_nit_coords%>% filter(Spp_code == "AGHY"),convex = c(5, 5),concave = c(5, 5)) 
+ag_nit.agpe <- fm_extensions(ag_nit_coords%>% filter(Spp_code == "AGPE"),convex = c(5, 5),concave = c(5, 5)) 
+ag_nit.elvi <- fm_extensions(ag_nit_coords%>% filter(Spp_code == "ELVI"),convex = c(5, 5),concave = c(5, 5)) 
 
 ag_nit_hull.aghy <- st_cast(st_sf(ag_nit.aghy[[1]]), "MULTIPOLYGON", group_or_split = TRUE) 
 ag_nit_hull.agpe <- st_cast(st_sf(ag_nit.agpe[[1]]), "MULTIPOLYGON", group_or_split = TRUE) 
@@ -1207,7 +1213,8 @@ ag_nit.preddata.aghy <- expand.grid(Spp_code = "AGHY",
                              PercentUrban = 0,
                              mean_TIN_10km = seq(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_nit, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_nit, length.out = 100),
                              ppt_10km = 0) %>% 
-  st_as_sf(coords = c("PercentAg", "mean_TIN_10km"), remove = FALSE)  
+  mutate(TIN_tenth = mean_TIN_10km/10) %>% 
+  st_as_sf(coords = c("PercentAg", "TIN_tenth"), remove = FALSE)  
 ag_nit.aghy_within <- st_within( ag_nit.preddata.aghy, ag_nit_hull.aghy, sparse = FALSE)
 ag_nit.preddata.aghy <- ag_nit.preddata.aghy[ag_nit.aghy_within,]
 
@@ -1218,7 +1225,8 @@ ag_nit.preddata.agpe <- expand.grid(Spp_code = "AGPE",
                              PercentUrban = 0,
                              mean_TIN_10km = seq(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_nit, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_nit, length.out = 100),
                              ppt_10km = 0) %>% 
-  st_as_sf(coords = c("PercentAg", "mean_TIN_10km"), remove = FALSE)  
+  mutate(TIN_tenth = mean_TIN_10km/10) %>% 
+  st_as_sf(coords = c("PercentAg", "TIN_tenth"), remove = FALSE)  
 ag_nit.agpe_within <- st_within( ag_nit.preddata.agpe, ag_nit_hull.agpe, sparse = FALSE)
 ag_nit.preddata.agpe <- ag_nit.preddata.agpe[ag_nit.agpe_within,]
 
@@ -1229,7 +1237,8 @@ ag_nit.preddata.elvi <- expand.grid(Spp_code = "ELVI",
                              PercentUrban = 0,
                              mean_TIN_10km = seq(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_nit, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_nit, length.out = 100),
                              ppt_10km = 0) %>% 
-  st_as_sf(coords = c("PercentAg", "mean_TIN_10km"), remove = FALSE)  
+  mutate(TIN_tenth = mean_TIN_10km/10) %>% 
+  st_as_sf(coords = c("PercentAg", "TIN_tenth"), remove = FALSE)  
 ag_nit.elvi_within <- st_within( ag_nit.preddata.elvi, ag_nit_hull.elvi, sparse = FALSE)
 ag_nit.preddata.elvi <- ag_nit.preddata.elvi[ag_nit.elvi_within,]
 
@@ -1241,8 +1250,7 @@ ag_nit.preddata <- bind_rows(ag_nit.preddata.aghy, ag_nit.preddata.agpe, ag_nit.
                              Spp_code == "ELVI" ~ species_names[3]),
          year_label = case_when(year >=0 ~ "max_year",
                                 year < 0 ~ "min_year")) %>% 
-  as_tibble() %>% select(-geometry) %>% 
-  na.omit()
+  as_tibble() %>% select(-geometry) 
 
 
 
@@ -1273,11 +1281,12 @@ ag_nit.year.pred_df <- tibble(ag_nit.preddata, as_tibble(ag_nit.year.pred)) %>%
 urb_nit_coords <- data %>% 
   select(-geometry) %>% 
   as_tibble() %>% 
-  st_as_sf(coords = c('PercentUrban', 'mean_TIN_10km'), remove = FALSE) 
+  mutate(TIN_tenth = mean_TIN_10km/10) %>% 
+  st_as_sf(coords = c('PercentUrban', 'TIN_tenth'), remove = FALSE) 
 
-urb_nit.aghy <- fm_extensions(urb_nit_coords%>% filter(Spp_code == "AGHY"),convex = c(25, 25),concave = c(25, 25)) 
-urb_nit.agpe <- fm_extensions(urb_nit_coords%>% filter(Spp_code == "AGPE"),convex = c(25,25),concave = c(25, 25)) 
-urb_nit.elvi <- fm_extensions(urb_nit_coords%>% filter(Spp_code == "ELVI"),convex = c(25, 25),concave = c(25, 25)) 
+urb_nit.aghy <- fm_extensions(urb_nit_coords%>% filter(Spp_code == "AGHY"),convex = c(5, 5),concave = c(5, 5)) 
+urb_nit.agpe <- fm_extensions(urb_nit_coords%>% filter(Spp_code == "AGPE"),convex = c(5, 5),concave = c(5, 5)) 
+urb_nit.elvi <- fm_extensions(urb_nit_coords%>% filter(Spp_code == "ELVI"),convex = c(5, 5),concave = c(5, 5)) 
 
 urb_nit_hull.aghy <- st_cast(st_sf(urb_nit.aghy[[1]]), "MULTIPOLYGON", group_or_split = TRUE) 
 urb_nit_hull.agpe <- st_cast(st_sf(urb_nit.agpe[[1]]), "MULTIPOLYGON", group_or_split = TRUE) 
@@ -1292,7 +1301,8 @@ urb_nit.preddata.aghy <- expand.grid(Spp_code = "AGHY",
                              PercentUrban = seq(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_urb, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_urb, length.out = 100),
                              mean_TIN_10km = seq(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_nit, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_nit, length.out = 100),
                              ppt_10km = 0) %>% 
-  st_as_sf(coords = c("PercentUrban", "mean_TIN_10km"), remove = FALSE)  
+  mutate(TIN_tenth = mean_TIN_10km/10) %>% 
+  st_as_sf(coords = c("PercentUrban", "TIN_tenth"), remove = FALSE)  
 urb_nit.aghy_within <- st_within( urb_nit.preddata.aghy, urb_nit_hull.aghy, sparse = FALSE)
 urb_nit.preddata.aghy <- urb_nit.preddata.aghy[urb_nit.aghy_within,]
 
@@ -1303,7 +1313,8 @@ urb_nit.preddata.agpe <- expand.grid(Spp_code = "AGPE",
                              PercentUrban = seq(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_urb, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_urb, length.out = 100),
                              mean_TIN_10km = seq(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_nit, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_nit, length.out = 100),
                              ppt_10km = 0) %>% 
-  st_as_sf(coords = c("PercentUrban", "mean_TIN_10km"), remove = FALSE)  
+  mutate(TIN_tenth = mean_TIN_10km/10) %>% 
+  st_as_sf(coords = c("PercentUrban", "TIN_tenth"), remove = FALSE)  
 urb_nit.agpe_within <- st_within( urb_nit.preddata.agpe, urb_nit_hull.agpe, sparse = FALSE)
 urb_nit.preddata.agpe <- urb_nit.preddata.agpe[urb_nit.agpe_within,]
 
@@ -1314,7 +1325,8 @@ urb_nit.preddata.elvi <- expand.grid(Spp_code = "ELVI",
                              PercentUrban = seq(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_urb, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_urb, length.out = 100),
                              mean_TIN_10km = seq(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_nit, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_nit, length.out = 100),
                              ppt_10km = 0) %>% 
-  st_as_sf(coords = c("PercentUrban", "mean_TIN_10km"), remove = FALSE)  
+  mutate(TIN_tenth = mean_TIN_10km/10) %>% 
+  st_as_sf(coords = c("PercentUrban", "TIN_tenth"), remove = FALSE)  
 urb_nit.elvi_within <- st_within( urb_nit.preddata.elvi, urb_nit_hull.elvi, sparse = FALSE)
 urb_nit.preddata.elvi <- urb_nit.preddata.elvi[urb_nit.elvi_within,]
 
@@ -1387,7 +1399,7 @@ ag_urb_trend <- ggplot(year.pred_df %>% filter(dataset == "ag_urb"))+
   # geom_point(data = endo_herb, aes(x = PercentAg,y = PercentUrban), alpha = .1)+
   # coord_sf()+
   facet_wrap(~species , ncol = 1, strip.position = "right")+#, scales = "free_x")+
-  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-1,1))+
+  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-1, 1))+
   # scale_fill_viridis_c(option = "turbo")+
   labs(fill = "% Prevalence / Year", x= "Ag. Land Cover (%)", y= "Urban Land Cover (%)")+
   theme_classic()+
@@ -1401,7 +1413,7 @@ ag_urb_prob <- ggplot(year.pred_df %>% filter(dataset == "ag_urb"))+
   stat_contour(aes(x = PercentAg, y = PercentUrban, z = diff_prob),position = "identity", breaks = 0.94, linewidth = .5, color = "black", alpha = .5)+
   # coord_sf()+
   facet_wrap(~species, ncol = 1,  strip.position = "right", scales = "free_x")+
-  scale_fill_distiller(palette = "YlGn", direction = 1)+
+  scale_fill_distiller(palette = "YlGn", direction = 1, limits = c(.5, 1))+
   # scale_fill_viridis_c(option = "turbo")+
   labs(fill = "Probability of Effect")+
   theme_classic()+
@@ -1421,7 +1433,7 @@ ag_nit_trend <- ggplot(year.pred_df%>% filter(dataset == "ag_nit"))+
   # geom_point(data = endo_herb, aes(x = PercentAg,y = mean_TIN_10km), alpha = .1)+
   # coord_sf()+
   facet_wrap(~species, ncol = 1,  strip.position = "right", scales = "free_x")+
-  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-.9,.9))+
+  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-1, 1))+
   # scale_fill_viridis_c(option = "turbo")+
   labs(fill = "% Prevalence / Year", x = "Nitrogen Deposition (kg N/km^2)", y = "Ag. Land Cover (%)")+
   theme_classic()+
@@ -1436,7 +1448,7 @@ ag_nit_prob <- ggplot(year.pred_df%>% filter(dataset == "ag_nit"))+
   # geom_point(data = endo_herb, aes(x = PercentAg,y = PercentUrban), alpha = .1)+
   # coord_sf()+
   facet_wrap(~species, ncol = 1,  strip.position = "right", scales = "free_x")+
-  scale_fill_distiller(palette = "YlGn", direction = 1)+
+  scale_fill_distiller(palette = "YlGn", direction = 1, limits = c(.5, 1))+
   # scale_fill_viridis_c(option = "turbo")+
   labs(fill = "Probability of Effect", x = "Nitrogen Deposition (kg N/km^2)", y = "Ag. Land Cover (%)")+
   theme_classic()+
@@ -1459,7 +1471,7 @@ urb_nit_trend <- ggplot(year.pred_df%>% filter(dataset == "urb_nit"))+
   # geom_point(data = endo_herb, aes(x = PercentAg,y = mean_TIN_10km), alpha = .1)+
   # coord_sf()+
   facet_wrap(~species, ncol = 1,  strip.position = "right", scales = "free_x")+
-  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-.9,.9))+
+  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-1, 1))+
   # scale_fill_viridis_c(option = "turbo")+
   labs(fill = "% Prevalence / Year", y = "Urban Land Cover (%)", x = "Nitrogen Deposition (kg N/km^2)")+
   theme_classic()+
@@ -1470,11 +1482,11 @@ urb_nit_trend <- ggplot(year.pred_df%>% filter(dataset == "urb_nit"))+
 
 urb_nit_prob <- ggplot(year.pred_df%>% filter(dataset == "urb_nit"))+
   geom_raster(aes( x = mean_TIN_10km, y = PercentUrban, fill = diff_prob )) +
-  stat_contour(aes(x = mean_TIN_10km, y = PercentUrban, z = diff_prob),position = "identity", breaks = 0.94, linewidth = .5, color = "black", alpha = .5)+
+  stat_contour(aes(x = mean_TIN_10km, y = PercentUrban, z = diff_prob),position = "identity", breaks = 0.90, linewidth = .5, color = "black", alpha = .5)+
   # geom_point(data = endo_herb, aes(x = PercentAg,y = PercentUrban), alpha = .1)+
   # coord_sf()+
   facet_wrap(~species, ncol = 1,  strip.position = "right", scales = "free_x")+
-  scale_fill_distiller(palette = "YlGn", direction = 1)+
+  scale_fill_distiller(palette = "YlGn", direction = 1, limits = c(.5, 1))+
   # scale_fill_viridis_c(option = "turbo")+
   labs(fill = "Probability of Effect", y = "Urban Land Cover (%)", x = "Nitrogen Deposition (kg N/km^2)")+
   theme_classic()+

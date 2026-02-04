@@ -29,7 +29,7 @@ library(ggplot2)
 
 Mallorypath <- "C:/Users/malpa/OneDrive/Documents/Endophyte_herbarium_urbanization/"
 Joshpath <- "Analyses/"
-path <- Mallorypath
+path <- Joshpath
 
 
 endo_herb_georef <- read_csv(file = paste0(path, "full_Zonalhist_NLCD_2001_10km.csv")) %>%
@@ -168,9 +168,34 @@ endo_herb_sf<- endo_herb %>%
 climate <- read_csv(file = paste0(path,"PRISM_yearly_df.csv")) %>% 
   pivot_wider(id_cols = c(lon, lat, year), names_from = c("buffer"), values_from = c("tmean", "ppt"))
 
-endo_herb <- left_join(endo_herb_sf, climate, by = c("lon", "lat", "year"))
+endo_herb <- left_join(endo_herb_sf, climate, by = c("lon", "lat", "year")) %>% 
+  filter(year>=1895) %>% 
+  filter(seed_scored != 0) %>% 
+  filter(Sample_id != "BRIT_AGHY_506") %>% # dropping this because the georeferenceing is wrong
+  filter(!(Sample_id == "AM_ELVI_122" & is.na(Municipality))) %>% 
+  dplyr::distinct(Sample_id, score_number, .keep_all = TRUE)
 
+length(unique(endo_herb$Sample_id))
+####### calculate georeferencing bounding box widths #####
 
+east_west_bb <- endo_herb %>% 
+  select(Sample_id, score_number, east, west, north, south) %>% 
+  pivot_longer(cols = c(east, west), names_to="bb_lon", values_to = "lon" ) %>% 
+  pivot_longer(cols = c(north, south), names_to="bb_lat", values_to = "lat") %>% 
+  st_drop_geometry() %>% 
+  st_as_sf(coords = c("lon", "lat"), crs = 4326, remove = FALSE) %>% 
+  st_transform(epsg6703km) %>% 
+  mutate(
+    easting = st_coordinates(.)[, 1],
+    northing = st_coordinates(.)[, 2]
+  ) %>% filter(bb_lat == "north") %>% select(-bb_lat, -northing, -lon, -lat) %>% 
+  st_drop_geometry() %>% 
+  pivot_wider(names_from = bb_lon, values_from = easting) %>% 
+  mutate(width = west-east)
+mean(east_west_bb$width)
+median(east_west_bb$width)
+min(east_west_bb$width)
+max(east_west_bb$width)
 
 
 #load in map outline data

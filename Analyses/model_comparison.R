@@ -188,7 +188,12 @@ endo_herb_sf<- endo_herb %>%
 climate <- read_csv(file = paste0(path,"PRISM_yearly_df.csv")) %>% 
   pivot_wider(id_cols = c(lon, lat, year), names_from = c("buffer"), values_from = c("tmean", "ppt"))
 
-endo_herb <- left_join(endo_herb_sf, climate, by = c("lon", "lat", "year"))
+endo_herb <- left_join(endo_herb_sf, climate, by = c("lon", "lat", "year")) %>% 
+  filter(year>=1895) %>% 
+  filter(seed_scored != 0) %>% 
+  filter(Sample_id != "BRIT_AGHY_506") %>% # dropping this because the georeferenceing is wrong
+  filter(!(Sample_id == "AM_ELVI_122" & is.na(Municipality))) %>% 
+  dplyr::distinct(Sample_id, score_number, .keep_all = TRUE)
 
 
 
