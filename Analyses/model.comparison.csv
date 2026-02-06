@@ -1,31 +1,31 @@
 "","components","dic","waic","cpo","auc","convergence","year"
-"1","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km)^4",2634.212,2639.8278,0.6001,0.7877,0,FALSE
-"2","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban)^3",2644.3865,2646.0894,0.6013,0.7819,0,FALSE
-"3","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km)^2",2644.9419,2647.4015,0.6016,0.7777,0,FALSE
-"4","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km + tmean_10km)^4",2645.1885,2662.7467,0.6074,0.8023,0,FALSE
-"5","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km)^3",2645.9242,2650.7641,0.6025,0.784,0,FALSE
-"6","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + tmean_10km)^4",2647.8205,2654.3218,0.6033,0.7623,0,FALSE
-"7","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban)",2650.5979,2650.6664,0.6023,0.7808,0,FALSE
-"8","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + tmean_10km)",2651.6558,2652.3017,0.6027,0.78,0,FALSE
-"9","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km)^4",2652.6997,2671.4133,0.6104,0.8066,0,TRUE
-"10","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban)^2",2652.7796,2654.4793,0.6031,0.751,0,FALSE
-"11","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km)^3",2652.8067,2664.3113,0.6063,0.7956,0,TRUE
-"12","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km)",2653.0458,2653.7514,0.603,0.7817,0,TRUE
-"13","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km + tmean_10km)^2",2653.0499,2662.1706,0.6052,0.7859,0,TRUE
-"14","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km + tmean_10km)",2653.425,2654.61,0.6032,0.7832,0,TRUE
-"15","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km + tmean_10km)",2654.7355,2655.5059,0.6034,0.7804,0,FALSE
-"16","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km)^2",2654.8665,2660.3086,0.6047,0.7802,0,TRUE
-"17","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km)",2654.9168,2655.1683,0.6033,0.7792,0,FALSE
-"18","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km + tmean_10km)^2",2655.2261,2660.986,0.6048,0.7784,0,FALSE
-"19","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + tmean_10km)^3",2655.6119,2661.3546,0.6048,0.7582,0,FALSE
-"20","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km + tmean_10km)^3",2656.1909,2668.0424,0.6071,0.7923,0,FALSE
-"21","~0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + tmean_10km)^2",2657.5908,2660.9376,0.6047,0.7776,0,FALSE
-"22","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year)^3",2658.0715,2663.4795,0.6055,0.7845,0,TRUE
-"23","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year)^2",2658.7031,2661.7848,0.6048,0.7557,0,TRUE
-"24","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + tmean_10km)^2",2658.754,2665.0502,0.6056,0.76,0,TRUE
-"25","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year)",2661.0222,2662.116,0.6048,0.7492,0,TRUE
-"26","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + tmean_10km)",2662.2291,2663.7515,0.6052,0.7471,0,TRUE
-"27","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km + tmean_10km)^3",2669.0263,2694.3501,0.6169,0.8071,0,TRUE
-"28","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + tmean_10km)^3",2677.7992,2690.0721,0.6123,0.7668,0,TRUE
-"29","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + tmean_10km)^4",2683.9295,2701.2832,0.6158,0.7724,0,TRUE
-"30","~0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km + tmean_10km)^4",2714.6289,2790.1375,0.6826,0.8259,0,TRUE
+"1","~0 + Species/(Nitrogen + PercentAg + PercentUrban + Precip.)^4",2365.6044,2372.5608,0.5988,0.7978,0,FALSE
+"2","~0 + Species/(Nitrogen + PercentAg + PercentUrban + Precip.)^2",2366.8578,2370.1653,0.5979,0.7848,0,FALSE
+"3","~0 + Species/(Nitrogen + PercentAg + PercentUrban + Precip.)^3",2372.4071,2378.3951,0.6002,0.7953,0,FALSE
+"4","~0 + Species/(Nitrogen + PercentAg + PercentUrban)",2373.7452,2374.4679,0.5988,0.7834,0,FALSE
+"5","~0 + Species/(Nitrogen + PercentAg + PercentUrban + Temp.)",2374.4022,2375.5102,0.5991,0.7845,0,FALSE
+"6","~0 + Species/(Nitrogen + PercentAg + PercentUrban + Precip. + Temp.)^2",2376.201,2382.471,0.6011,0.7892,0,FALSE
+"7","~0 + Species/(Nitrogen + PercentAg + PercentUrban)^2",2376.8615,2378.741,0.5998,0.7487,0,FALSE
+"8","~0 + (Species)/(Nitrogen + PercentAg + PercentUrban + Year + Precip.)^2",2377.304,2383.8714,0.6015,0.7904,0,TRUE
+"9","~0 + Species/(Nitrogen + PercentAg + PercentUrban + Temp.)^2",2377.8664,2382.7053,0.601,0.7841,0,FALSE
+"10","~0 + (Species)/(Nitrogen + PercentAg + PercentUrban + Year + Precip. + Temp.)^2",2377.9842,2387.5386,0.6027,0.7962,0,TRUE
+"11","~0 + Species/(Nitrogen + PercentAg + PercentUrban)^3",2378.5492,2381.0658,0.6004,0.7508,0,FALSE
+"12","~0 + Species/(Nitrogen + PercentAg + PercentUrban + Precip.)",2379.0338,2379.8769,0.6002,0.7812,0,FALSE
+"13","~0 + Species/(Nitrogen + PercentAg + PercentUrban + Precip. + Temp.)",2379.1071,2380.3318,0.6003,0.7834,0,FALSE
+"14","~0 + Species/(Nitrogen + PercentAg + PercentUrban + Temp.)^4",2379.258,2386.8867,0.6025,0.7959,0,FALSE
+"15","~0 + (Species)/(Nitrogen + PercentAg + PercentUrban + Year + Precip.)^3",2380.6739,2393.1342,0.605,0.8124,0,TRUE
+"16","~0 + (Species)/(Nitrogen + PercentAg + PercentUrban + Year + Temp.)^2",2381.3734,2387.9166,0.6023,0.76,0,TRUE
+"17","~0 + (Species)/(Year * Nitrogen + year * PercentAg + year * PercentUrban + year * Precip. + year * Temp.)",2382.3227,2386.1975,0.602,0.7912,0,TRUE
+"18","~0 + (Species)/(Nitrogen + PercentAg + PercentUrban + Year + Precip.)^4",2382.5525,2402.6009,0.6109,0.8228,0,TRUE
+"19","~0 + Species/(Nitrogen + PercentAg + PercentUrban + Temp.)^3",2385.4127,2391.6434,0.6034,0.7582,0,FALSE
+"20","~0 + (Species)/(Nitrogen + PercentAg + PercentUrban + Year)^2",2385.4873,2389.4094,0.6026,0.7528,0,TRUE
+"21","~0 + (Species)/(Year * Nitrogen + year * PercentAg + year * PercentUrban + year * Temp.)",2385.7039,2388.747,0.6024,0.7478,0,TRUE
+"22","~0 + (Species)/(Year * Nitrogen + year * PercentAg + year * PercentUrban + year * Precip.)",2388.3426,2391.5482,0.6033,0.786,0,TRUE
+"23","~0 + Species/(Nitrogen + PercentAg + PercentUrban + Precip. + Temp.)^4",2388.61,2408.4343,0.6111,0.8145,0,FALSE
+"24","~0 + (Species)/(Nitrogen + PercentAg + PercentUrban + Year)^3",2392.3939,2398.2619,0.605,0.757,0,TRUE
+"25","~0 + (Species)/(Year * Nitrogen + year * PercentAg + year * PercentUrban)",2393.9792,2396.287,0.6043,0.745,0,TRUE
+"26","~0 + Species/(Nitrogen + PercentAg + PercentUrban + Precip. + Temp.)^3",2394.1589,2408.2131,0.6087,0.803,0,FALSE
+"27","~0 + (Species)/(Nitrogen + PercentAg + PercentUrban + Year + Temp.)^3",2404.9661,2417.8729,0.6113,0.7677,0,TRUE
+"28","~0 + (Species)/(Nitrogen + PercentAg + PercentUrban + Year + Precip. + Temp.)^3",2406.074,2435.1145,0.6229,0.8254,0,TRUE
+"29","~0 + (Species)/(Nitrogen + PercentAg + PercentUrban + Year + Temp.)^4",2416.7837,2436.2413,0.6178,0.7725,0,TRUE
+"30","~0 + (Species)/(Nitrogen + PercentAg + PercentUrban + Year + Precip. + Temp.)^4",2468.5845,2580.4484,0.7327,0.848,0,TRUE

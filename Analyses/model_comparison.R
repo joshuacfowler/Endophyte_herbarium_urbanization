@@ -197,7 +197,6 @@ endo_herb <- left_join(endo_herb_sf, climate, by = c("lon", "lat", "year")) %>%
 
 
 
-
 #load in map outline data
 outline_map <- map_data("world")
 states_shape <- map_data("state")
@@ -225,13 +224,14 @@ data <- endo_herb %>%
          PercentAg = PercentAg - data_summary$PercentAg,
          mean_TIN_10km = mean_TIN_10km - data_summary$mean_TIN_10km,
          tmean_10km = tmean_10km - data_summary$tmean_10km,
-         ppt_10km = ppt_10km - data_summary$ppt_10km) %>% 
-  filter(!is.na(tmean_10km))
+         ppt_10km = ppt_10km - data_summary$ppt_10km) %>%  
+  mutate(Spp_index = as.numeric(as.factor(Spp_code))) %>% 
+  filter(!is.na(ppt_10km))
 
 # Build the spatial mesh from the coords for each species and a boundary around each species predicted distribution (eventually from Jacob's work ev)
 coords <- cbind(data$easting, data$northing)
 
-non_convex_bdry <- fmesher::fm_extensions(
+non_convex_bdry <- fm_extensions(
   data$geometry,
   convex = c(250, 500),
   concave = c(250, 500),
@@ -248,7 +248,8 @@ bdry <- st_intersection(coastline$geom, non_convex_bdry[[1]])
 
 # plot(bdry)
 
-bdry_polygon <- st_cast(st_sf(bdry), "MULTIPOLYGON", group_or_split = TRUE) %>% st_union() 
+bdry_polygon <- st_cast(st_zm(bdry), "MULTIPOLYGON", group_or_split = TRUE) %>% st_union() %>% 
+  as("Spatial")
 
 non_convex_bdry[[1]] <- bdry_polygon
 
@@ -259,7 +260,7 @@ max.edge = diff(range(coords[,1]))/(100)
 
 mesh <- fm_mesh_2d_inla(
   # loc = coords,
-  boundary = non_convex_bdry, max.edge = c(max.edge*4, max.edge*8), # km inside and outside
+  boundary = non_convex_bdry, max.edge = c(max.edge*2, max.edge*8), # km inside and outside
   cutoff = max.edge,
   crs = fm_crs(data)
   # crs=CRS(proj4string(bdry_polygon))
@@ -276,7 +277,7 @@ mesh_plot <- ggplot() +
   labs(x = "", y = "", color = "Species")+
   theme(legend.text = element_text(face = "italic"))
 # mesh_plot
-# ggsave(mesh_plot, filename = "mesh_plot.png", width = 6, height = 5)
+# ggsave(mesh_plot, filename = "Plots/mesh_plot.png", width = 6, height = 5)
 
 
 
@@ -588,7 +589,7 @@ s_components.15 <-  ~ 0 +  fixed(main = ~ 0 +Spp_code/(mean_TIN_10km + PercentAg
   space_int(coords, model = spde)
 
 # models including year
-s_components_year.1 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km + tmean_10km), model = "fixed")+
+s_components_year.1 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(year*mean_TIN_10km + year*PercentAg + year*PercentUrban + year*ppt_10km + year*tmean_10km), model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
@@ -604,7 +605,7 @@ s_components_year.4 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + Per
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
-s_components_year.5 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km), model = "fixed")+
+s_components_year.5 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(year*mean_TIN_10km + year*PercentAg + year*PercentUrban + year*ppt_10km), model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
@@ -620,7 +621,7 @@ s_components_year.8 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + Per
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
-s_components_year.9 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + tmean_10km), model = "fixed")+
+s_components_year.9 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(year*mean_TIN_10km + year*PercentAg + year*PercentUrban + year*tmean_10km), model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
@@ -636,7 +637,7 @@ s_components_year.12 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + Pe
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
-s_components_year.13 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year), model = "fixed")+
+s_components_year.13 <-  ~ 0 +  fixed(main = ~ 0 +(Spp_code)/(year*mean_TIN_10km + year*PercentAg + year*PercentUrban), model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
@@ -700,7 +701,7 @@ s_formula <- Endo_status_liberal ~ .
 fit_list <- list()
 
 for(i in 1:length(components_list)){
-  for(i in 1:15){
+  # for(i in 16:30){
   fit_list[[i]] <- bru(components_list[[i]],
                        like(
                          formula = s_formula,
@@ -725,13 +726,19 @@ cpo <- c()
 convergence <- c()
 
 for(i in 1:length(fit_list)){
-  # for(i in 1:15){
+  # for(i in 16:30){
   components[i] <- as.character(c(fit_list[[i]]$bru_info$model$effects$fixed$main$input$input))
   dic[i] <- fit_list[[i]]$dic$dic 
   waic[i] <- fit_list[[i]]$waic$waic
   cpo[i] <- -mean(log(fit_list[[i]]$cpo$cpo))
   convergence[i] <- fit_list[[i]]$mode$mode.status
 }
+
+components <- sub(components, pattern = "mean_TIN_10km", replacement = "Nitrogen")
+components <- sub(components, pattern = "Spp_code", replacement = "Species")
+components <- sub(components, pattern = "ppt_10km", replacement = "Precip.")
+components <- sub(components, pattern = "tmean_10km", replacement = "Temp.")
+components <- sub(components, pattern = "year", replacement = "Year")
 
 
 
@@ -740,7 +747,7 @@ validation <- list()
 rocobj <- list()
 auc <- c()
 for(i in 1:length(fit_list)){
-  for(i in 1:15){
+  # for(i in 16:30){
   validation[[i]] <- predict(fit_list[[i]], newdata = data,
                              formula = ~invlogit(fixed + scorer + collector + space_int), n.samples = 250)
   rocobj[[i]] <- pROC::roc(data$Endo_status_liberal, validation[[i]]$mean)
@@ -755,7 +762,7 @@ table <- data.frame(components, dic, waic, cpo, auc, convergence) %>% arrange(di
   mutate(across(-c(components), ~round(.,digits = 4))) 
 table <- table %>% 
   mutate(components = factor(components, levels = (table$components)[rev(order(table$dic))]),
-         year = grepl("year", components))
+         year = grepl("Year", components))
 write.csv(table, "Analyses/model.comparison.csv")
 
 
@@ -768,18 +775,18 @@ dic_plot <- ggplot(table%>%  select(components, dic, year) %>% filter(year == FA
   scale_fill_distiller(palette = "Reds", direction = -1)+
   guides(fill = "none")+
   theme_void()+
-  theme(axis.text.y = element_text( size = rel(.6), hjust = 1 ),
+  theme(axis.text.y = element_text( size = rel(.7), hjust = 1 ),
         axis.text.x = element_blank(),
         axis.title.x = element_text(),
         plot.margin=grid::unit(c(0,0,0,0), "mm"))
 dic_plot.year <- ggplot(table%>%  select(components, dic, year) %>% filter(year == TRUE))+
   geom_tile(aes(y = components, x = 1, fill = dic), color = "white", alpha = .8)+
   geom_text(aes(y = components, x = 1, label = dic), size = 3)+
-  labs(x = "DIC",y = "", fill = "DIC",  title = "A")+
+  labs(x = "DIC",y = "", fill = "DIC",  title = "E")+
   scale_fill_distiller(palette = "Reds", direction = -1)+
   guides(fill = "none")+
   theme_void()+
-  theme(axis.text.y = element_text( size = rel(.6), hjust = 1 ),
+  theme(axis.text.y = element_text( size = rel(.7), hjust = 1 ),
         axis.text.x = element_blank(),
         axis.title.x = element_text(),
         plot.margin=grid::unit(c(0,0,0,0), "mm"))
@@ -800,7 +807,7 @@ waic_plot <- ggplot(table %>% select(components, waic, year)%>% filter(year == F
 waic_plot.year <- ggplot(table %>% select(components, waic, year)%>% filter(year == TRUE))+
   geom_tile(aes(y = components, x = 1, fill = waic),color = "white", alpha = .8)+
   geom_text(aes(y = components, x = 1, label = waic), size = 3)+
-  labs(x = "WAIC",y = "", fill = "WAIC",  title = "B")+
+  labs(x = "WAIC",y = "", fill = "WAIC",  title = "F")+
   scale_fill_distiller(palette = "Blues", direction = -1)+
   guides(fill = "none")+
   theme_void()+
@@ -824,7 +831,7 @@ cpo_plot <- ggplot(table %>% select(components, cpo, year)%>% filter(year == FAL
 cpo_plot.year <- ggplot(table %>% select(components, cpo, year)%>% filter(year == TRUE))+
   geom_tile(aes(y = components, x = 1, fill = cpo),color = "white", alpha = .8)+
   geom_text(aes(y = components, x = 1, label = cpo), size = 3)+
-  labs(x = "-log(CPO)",y = "", fill = "CPO",  title = "C")+
+  labs(x = "-log(CPO)",y = "", fill = "CPO",  title = "G")+
   scale_fill_distiller(palette = "Greens", direction = -1)+
   guides(fill = "none")+
   theme_void()+
@@ -852,7 +859,7 @@ auc_plot.year <- ggplot(table %>% select(components, auc, year)%>% filter(year =
   guides(fill = "none")+
   scale_fill_distiller(palette = "Greys", direction = -1)+
   theme_void()+
-  labs(x = "AUC", y = "",fill = "AUC", title = "D")+
+  labs(x = "AUC", y = "",fill = "AUC", title = "H")+
   theme(axis.text.y = element_blank(),
         axis.text.x = element_blank(),
         axis.title.x = element_text(),
@@ -860,9 +867,9 @@ auc_plot.year <- ggplot(table %>% select(components, auc, year)%>% filter(year =
 # auc_plot
 
 
-model_comparison_plot <- dic_plot + waic_plot + cpo_plot + auc_plot +plot_layout(nrow = 1) 
-model_comparison_plot.year <- dic_plot.year + waic_plot.year + cpo_plot.year + auc_plot.year +plot_layout(nrow = 1) 
+model_comparison_plot <- wrap_elements(dic_plot + waic_plot + cpo_plot + auc_plot +plot_layout(nrow = 1)  + plot_annotation(subtitle= "Non-temporal Model Comparison"))
+model_comparison_plot.year <- wrap_elements(dic_plot.year + waic_plot.year + cpo_plot.year + auc_plot.year +plot_layout(nrow = 1)  + plot_annotation(subtitle= "Temporal Model Comparison"))
 model_comparison <- model_comparison_plot/model_comparison_plot.year
-ggsave(model_comparison, filename = "Plots/model_comparison_plot.png", width = 12, height = 10)
+ggsave(model_comparison, filename = "Plots/model_comparison_plot.png", width = 11, height = 10)
 
 
