@@ -25,6 +25,7 @@ library(tidyterra)
 library(tidybayes) # using this for dotplots
 library(GGally)
 library(patchwork)
+library(metR)
 library(egg) # for labelling panels
 library(ggmap)
 library(pROC)
@@ -333,7 +334,7 @@ s_components <-  ~ 0 +  fixed(main = ~ 0 + Spp_code/(mean_TIN_10km + PercentAg +
 
 
 
-s_components.year <-  ~ 0 +  fixed(main = ~ 0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km)^3, model = "fixed")+
+s_components.year <-  ~ 0 +  fixed(main = ~ 0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km)^2, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
@@ -1046,8 +1047,8 @@ effects_df <- posteriors_df %>%
                                                          "PercentAg" = "Agr.",
                                                          "PercentUrban" = "Urb.",
                                                          "mean_TIN_10km" = "Nit.",
-                                                         "ppt_10km" = "PPT.")),
-                          levels = c("Intercept"  ,"Nit.","Agr.","Urb.","Year","PPT.","Nit. X Agr.","Nit. X Urb.", "Nit. X Year","Nit. X PPT.","Agr. X Urb.","Agr. X Year","Agr. X PPT.","Urb. X Year","Urb. X PPT.","Year X PPT.","Nit. X Agr. X Urb.","Nit. X Agr. X Year","Nit. X Agr. X PPT.","Nit. X Urb. X Year","Nit. X Urb. X PPT.","Nit. X Year X PPT.","Agr. X Urb. X Year","Agr. X Urb. X PPT.","Agr. X Year X PPT.","Urb. X Year X PPT.","Nit. X Agr. X Urb. X Year","Nit. X Agr. X Urb. X PPT.","Nit. X Agr. X Year X PPT." ,"Nit. X Urb. X Year X PPT.","Agr. X Urb. X Year X PPT." )),
+                                                         "ppt_10km" = "Ppt.")),
+                          levels = c("Intercept"  ,"Nit.","Agr.","Urb.","Year","Ppt.","Nit. X Agr.","Nit. X Urb.", "Nit. X Year","Nit. X Ppt.","Agr. X Urb.","Agr. X Year","Agr. X Ppt.","Urb. X Year","Urb. X Ppt.","Year X Ppt.","Nit. X Agr. X Urb.","Nit. X Agr. X Year","Nit. X Agr. X Ppt.","Nit. X Urb. X Year","Nit. X Urb. X Ppt.","Nit. X Year X Ppt.","Agr. X Urb. X Year","Agr. X Urb. X Ppt.","Agr. X Year X Ppt.","Urb. X Year X Ppt.","Nit. X Agr. X Urb. X Year","Nit. X Agr. X Urb. X Ppt.","Nit. X Agr. X Year X Ppt." ,"Nit. X Urb. X Year X Ppt.","Agr. X Urb. X Year X Ppt." )),
          spp_f = factor(case_when(spp_label == "ELVI" ~ "E. virginicus", spp_label == "AGPE" ~ "A. perennans", spp_label == "AGHY" ~ "A. hyemalis"),
                         levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus"))))
 
@@ -1394,12 +1395,14 @@ year.pred_df <- bind_rows(ag_urb.year.pred_df, urb_nit.year.pred_df, ag_nit.year
 ########################################################################################################################
 ag_urb_trend <- ggplot(year.pred_df %>% filter(dataset == "ag_urb"))+
   geom_raster(aes(x = PercentAg, y = PercentUrban, fill = diff_mean )) +
-  stat_contour(aes(x = PercentAg, y = PercentUrban, z = diff_prob),position = "identity", breaks = 0.94, linewidth = .5, color = "black", alpha = .5)+
+  stat_contour(aes(x = PercentAg, y = PercentUrban, z = diff_prob, alpha = ..level..^4),position = "identity", breaks = 0.90, linewidth = .5, color = "black")+
+  stat_contour(aes(x = PercentAg, y = PercentUrban, z = diff_prob, alpha = ..level..^4),position = "identity", breaks = 0.80, linewidth = .5, color = "black")+
   # geom_sf(data = ag_urb.aghy.95, aes(geometry = ag_urb.aghy..1..),fill = NA)+
   # geom_point(data = endo_herb, aes(x = PercentAg,y = PercentUrban), alpha = .1)+
   # coord_sf()+
   facet_wrap(~species , ncol = 1, strip.position = "right")+#, scales = "free_x")+
-  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-1, 1))+
+  scale_alpha_continuous(limits = c(0,1), guide = "none")+
+  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-0.4, 0.4))+
   # scale_fill_viridis_c(option = "turbo")+
   labs(fill = "% Prevalence / Year", x= "Ag. Land Cover (%)", y= "Urban Land Cover (%)")+
   theme_classic()+
@@ -1410,12 +1413,13 @@ ag_urb_trend <- ggplot(year.pred_df %>% filter(dataset == "ag_urb"))+
 
 ag_urb_prob <- ggplot(year.pred_df %>% filter(dataset == "ag_urb"))+
   geom_raster(aes(x = PercentAg, y = PercentUrban, fill = diff_prob )) +
-  stat_contour(aes(x = PercentAg, y = PercentUrban, z = diff_prob),position = "identity", breaks = 0.94, linewidth = .5, color = "black", alpha = .5)+
+  stat_contour(aes(x = PercentAg, y = PercentUrban, z = diff_prob, alpha = ..level..^4),position = "identity", breaks = seq(.5:1, by = .05), linewidth = .5, color = "black")+
   # coord_sf()+
   facet_wrap(~species, ncol = 1,  strip.position = "right", scales = "free_x")+
+  scale_alpha_continuous(limits = c(0,1), guide = "none")+
   scale_fill_distiller(palette = "YlGn", direction = 1, limits = c(.5, 1))+
   # scale_fill_viridis_c(option = "turbo")+
-  labs(fill = "Probability of Effect")+
+  labs(fill = "Probability of Effect", x= "Ag. Land Cover (%)", y= "Urban Land Cover (%)")+
   theme_classic()+
   theme(strip.background = element_blank(),
         strip.text.y.right = element_blank())
@@ -1429,11 +1433,14 @@ ag_urb_prob <- ggplot(year.pred_df %>% filter(dataset == "ag_urb"))+
 
 ag_nit_trend <- ggplot(year.pred_df%>% filter(dataset == "ag_nit"))+
   geom_raster(aes(x = mean_TIN_10km, y = PercentAg, fill = diff_mean )) +
-  stat_contour(aes(x = mean_TIN_10km, y = PercentAg, z = diff_prob),position = "identity", breaks = 0.94, linewidth = .5, color = "black", alpha = .5)+
+  stat_contour(aes(x = mean_TIN_10km, y = PercentAg, z = diff_prob, alpha = ..level..^4),position = "identity", breaks = 0.90, linewidth = .5, color = "black")+
+  stat_contour(aes(x = mean_TIN_10km, y = PercentAg, z = diff_prob,alpha = ..level..^4),position = "identity", breaks = 0.80, linewidth = .5, color = "black")+
+  
   # geom_point(data = endo_herb, aes(x = PercentAg,y = mean_TIN_10km), alpha = .1)+
   # coord_sf()+
   facet_wrap(~species, ncol = 1,  strip.position = "right", scales = "free_x")+
-  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-1, 1))+
+  scale_alpha_continuous(limits = c(0,1), guide = "none")+
+  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-0.4, 0.4))+
   # scale_fill_viridis_c(option = "turbo")+
   labs(fill = "% Prevalence / Year", x = "Nitrogen Deposition (kg N/km^2)", y = "Ag. Land Cover (%)")+
   theme_classic()+
@@ -1444,10 +1451,11 @@ ag_nit_trend <- ggplot(year.pred_df%>% filter(dataset == "ag_nit"))+
 
 ag_nit_prob <- ggplot(year.pred_df%>% filter(dataset == "ag_nit"))+
   geom_raster(aes( x = mean_TIN_10km, y = PercentAg, fill = diff_prob )) +
-  stat_contour(aes(x = mean_TIN_10km, y = PercentAg, z = diff_prob),position = "identity", breaks = 0.94, linewidth = .5, color = "black", alpha = .5)+
+  stat_contour(aes(x = mean_TIN_10km, y = PercentAg, z = diff_prob, alpha = ..level..^4),position = "identity", breaks = seq(.5:1, by = .05), linewidth = .5, color = "black")+
   # geom_point(data = endo_herb, aes(x = PercentAg,y = PercentUrban), alpha = .1)+
   # coord_sf()+
   facet_wrap(~species, ncol = 1,  strip.position = "right", scales = "free_x")+
+  scale_alpha_continuous(limits = c(0,1), guide = "none")+
   scale_fill_distiller(palette = "YlGn", direction = 1, limits = c(.5, 1))+
   # scale_fill_viridis_c(option = "turbo")+
   labs(fill = "Probability of Effect", x = "Nitrogen Deposition (kg N/km^2)", y = "Ag. Land Cover (%)")+
@@ -1467,11 +1475,13 @@ ag_nit_prob <- ggplot(year.pred_df%>% filter(dataset == "ag_nit"))+
 
 urb_nit_trend <- ggplot(year.pred_df%>% filter(dataset == "urb_nit"))+
   geom_raster(aes(x = mean_TIN_10km, y = PercentUrban, fill = diff_mean )) +
-  stat_contour(aes(x = mean_TIN_10km, y = PercentUrban, z = diff_prob), position = "identity", breaks = 0.94, linewidth = .5, color = "black", alpha = .5)+
+  stat_contour(aes(x = mean_TIN_10km, y = PercentUrban, z = diff_prob, alpha = ..level..^4), position = "identity", breaks = 0.90, linewidth = .5, color = "black")+
+  stat_contour(aes(x = mean_TIN_10km, y = PercentUrban, z = diff_prob, alpha = ..level..^4), position = "identity", breaks = 0.80, linewidth = .5, color = "black")+
   # geom_point(data = endo_herb, aes(x = PercentAg,y = mean_TIN_10km), alpha = .1)+
   # coord_sf()+
   facet_wrap(~species, ncol = 1,  strip.position = "right", scales = "free_x")+
-  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-1, 1))+
+  scale_alpha_continuous(limits = c(0,1), guide = "none")+
+  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-0.4, 0.4))+
   # scale_fill_viridis_c(option = "turbo")+
   labs(fill = "% Prevalence / Year", y = "Urban Land Cover (%)", x = "Nitrogen Deposition (kg N/km^2)")+
   theme_classic()+
@@ -1482,13 +1492,15 @@ urb_nit_trend <- ggplot(year.pred_df%>% filter(dataset == "urb_nit"))+
 
 urb_nit_prob <- ggplot(year.pred_df%>% filter(dataset == "urb_nit"))+
   geom_raster(aes( x = mean_TIN_10km, y = PercentUrban, fill = diff_prob )) +
-  stat_contour(aes(x = mean_TIN_10km, y = PercentUrban, z = diff_prob),position = "identity", breaks = 0.90, linewidth = .5, color = "black", alpha = .5)+
+  stat_contour(aes(x = mean_TIN_10km, y = PercentUrban, z = diff_prob, alpha = ..level..^4),position = "identity", breaks = seq(.5:1, by = .05), linewidth = .5, color = "black")+
   # geom_point(data = endo_herb, aes(x = PercentAg,y = PercentUrban), alpha = .1)+
   # coord_sf()+
   facet_wrap(~species, ncol = 1,  strip.position = "right", scales = "free_x")+
+  scale_alpha_continuous(limits = c(0,1), guide = "none")+
   scale_fill_distiller(palette = "YlGn", direction = 1, limits = c(.5, 1))+
   # scale_fill_viridis_c(option = "turbo")+
   labs(fill = "Probability of Effect", y = "Urban Land Cover (%)", x = "Nitrogen Deposition (kg N/km^2)")+
+  # guides(alpha = "none")+
   theme_classic()+
   theme(strip.background = element_blank(),
         strip.text.y.right = element_text(face = "italic", angle = 0))
@@ -1514,5 +1526,414 @@ Fig3A <- ag_urb_trend_tag + ag_nit_trend_tag + urb_nit_trend_tag + plot_layout(n
 Fig3B <- ag_urb_prob_tag + ag_nit_prob_tag + urb_nit_prob_tag + plot_layout(nrow = 1, guides = "collect") + plot_annotation(title = "Posterior Probability of Effect")& theme(plot.title = element_text(size = rel(1.5)))
 Fig3 <- wrap_elements(Fig3A) / wrap_elements(Fig3B)
 ggsave(Fig3, filename = "Plots/Figure_3.png", width = 12, height = 12)
+
+
+
+
+
+################################################################################################################################
+##########  # graphing how these vary across precip ######
+################################################################################################################################
+
+quantile_summary <- data %>% 
+  group_by(Spp_code) %>% 
+  summarize(min_year = 1900-data_summary$year,
+            max_year = 2000-data_summary$year,
+            min_ag = min(PercentAg),
+            max_ag = max(PercentAg),
+            min_urb = min(PercentUrban),
+            max_urb = max(PercentUrban),
+            min_nit = min(mean_TIN_10km),
+            max_nit = max(mean_TIN_10km),
+            min_ppt = min(ppt_10km),
+            max_ppt = max(ppt_10km),
+  )
+# creating a hull to remove points in the covariate space that we never observe
+ag_ppt_coords <- data %>% 
+  select(-geometry) %>% 
+  as_tibble() %>% 
+  mutate(ppt_tenth = ppt_10km/80) %>% 
+  st_as_sf(coords = c('PercentAg', 'ppt_tenth'), remove = FALSE) 
+ag_ppt.aghy <- fm_extensions(ag_urb_coords%>% filter(Spp_code == "AGHY"),convex = c(5, 5),concave = c(5, 5)) 
+ag_ppt.agpe <- fm_extensions(ag_urb_coords%>% filter(Spp_code == "AGPE"),convex = c(5, 5),concave = c(5, 5)) 
+ag_ppt.elvi <- fm_extensions(ag_urb_coords%>% filter(Spp_code == "ELVI"),convex = c(5, 5),concave = c(5, 5)) 
+
+ag_ppt_hull.aghy <- st_cast(st_sf(ag_urb.aghy[[1]]), "MULTIPOLYGON", group_or_split = TRUE) 
+ag_ppt_hull.agpe <- st_cast(st_sf(ag_urb.agpe[[1]]), "MULTIPOLYGON", group_or_split = TRUE) 
+ag_ppt_hull.elvi <- st_cast(st_sf(ag_urb.elvi[[1]]), "MULTIPOLYGON", group_or_split = TRUE) 
+
+
+# agr. by ppt interaction
+ag_ppt.preddata.aghy <- expand.grid(Spp_code = "AGHY",
+                                    year = c(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_year, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_year),
+                                    PercentAg = seq(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_ag, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_ag, length.out = 100),
+                                    PercentUrban = 0,
+                                    mean_TIN_10km = 0,
+                                    ppt_10km = seq(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_ppt, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_ppt, length.out = 100))  %>% 
+  mutate(ppt_tenth = ppt_10km/80) %>% 
+  st_as_sf(coords = c("PercentAg", "ppt_tenth"), remove = FALSE)  
+ag_ppt.aghy_within <- st_within( ag_ppt.preddata.aghy, ag_ppt_hull.aghy, sparse = FALSE)
+ag_ppt.preddata.aghy <- ag_ppt.preddata.aghy[ag_ppt.aghy_within,]
+
+
+ag_ppt.preddata.agpe <- expand.grid(Spp_code = "AGPE",
+                                    year = c(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_year, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_year),
+                                    PercentAg = seq(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_ag, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_ag, length.out = 100),
+                                    PercentUrban = 0,
+                                    mean_TIN_10km = 0,
+                                    ppt_10km = seq(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_ppt, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_ppt, length.out = 100)) %>% 
+  mutate(ppt_tenth = ppt_10km/80) %>% 
+  st_as_sf(coords = c("PercentAg", "ppt_tenth"), remove = FALSE)  
+ag_ppt.agpe_within <- st_within( ag_ppt.preddata.agpe, ag_ppt_hull.agpe, sparse = FALSE)
+ag_ppt.preddata.agpe <- ag_ppt.preddata.agpe[ag_ppt.agpe_within,]
+
+
+ag_ppt.preddata.elvi <- expand.grid(Spp_code = "ELVI",
+                                    year = c(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_year, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_year),
+                                    PercentAg = seq(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_ag, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_ag, length.out = 100),
+                                    PercentUrban = 0,
+                                    mean_TIN_10km = 0,
+                                    ppt_10km = seq(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_ppt, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_ppt, length.out = 100)) %>% 
+  mutate(ppt_tenth = ppt_10km/80) %>% 
+  st_as_sf(coords = c("PercentAg", "ppt_tenth"), remove = FALSE)  
+ag_ppt.elvi_within <- st_within( ag_ppt.preddata.elvi, ag_ppt_hull.elvi, sparse = FALSE)
+ag_ppt.preddata.elvi <- ag_ppt.preddata.elvi[ag_ppt.elvi_within,]
+
+
+ag_ppt.preddata <- bind_rows(ag_ppt.preddata.aghy, ag_ppt.preddata.agpe, ag_ppt.preddata.elvi) %>% 
+  mutate(collector_index = 9999, scorer_index = 9999,
+         species = case_when(Spp_code == "AGHY" ~ species_names[1],
+                             Spp_code == "AGPE" ~ species_names[2],
+                             Spp_code == "ELVI" ~ species_names[3]),
+         year_label = case_when(year >=0 ~ "max_year",
+                                year < 0 ~ "min_year")) %>% 
+  as_tibble() %>% select(-geometry) %>% 
+  na.omit()
+
+
+# gennerating predictiion
+
+ag_ppt.year.pred <- generate(
+  fit.year,
+  newdata = ag_ppt.preddata,
+  formula = ~ invlogit(fixed),#+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  n.samples = 500) 
+colnames(ag_ppt.year.pred) <- paste0("iter", 1:500) 
+
+ag_ppt.year.pred_df <- tibble(ag_ppt.preddata, as_tibble(ag_ppt.year.pred)) %>% 
+  mutate(year = year + data_summary$year,
+         PercentUrban = PercentUrban + data_summary$PercentUrban,
+         PercentAg= PercentAg + data_summary$PercentAg,
+         mean_TIN_10km= mean_TIN_10km + data_summary$mean_TIN_10km,
+         ppt_10km = ppt_10km + data_summary$ppt_10km) %>% 
+  pivot_longer(cols = iter1:iter500, names_to = "iteration", values_to = "posterior") %>% 
+  pivot_wider(id_cols = c(Spp_code, PercentAg, PercentUrban, mean_TIN_10km, ppt_10km, collector_index, scorer_index, species, iteration), names_from = c(year_label), values_from = posterior, names_prefix = "post.") %>% 
+  mutate(diff = (post.max_year - post.min_year)) %>% 
+  group_by(Spp_code, PercentAg, PercentUrban, mean_TIN_10km, ppt_10km, collector_index, scorer_index, species) %>% 
+  dplyr::summarise(diff_mean = mean(diff),
+                   diff_prob = max((sum(diff<0)/500),(sum(diff>0)/500))) %>% 
+  mutate(dataset = "ag_ppt")
+
+
+
+# urb x precip
+urb_ppt_coords <- data %>% 
+  select(-geometry) %>% 
+  as_tibble() %>% 
+  mutate(ppt_tenth = ppt_10km/80) %>% 
+  st_as_sf(coords = c('PercentUrban', 'ppt_tenth'), remove = FALSE) 
+
+urb_ppt.aghy <- fm_extensions(urb_ppt_coords%>% filter(Spp_code == "AGHY"),convex = c(5, 5),concave = c(5, 5)) 
+urb_ppt.agpe <- fm_extensions(urb_ppt_coords%>% filter(Spp_code == "AGPE"),convex = c(5, 5),concave = c(5, 5)) 
+urb_ppt.elvi <- fm_extensions(urb_ppt_coords%>% filter(Spp_code == "ELVI"),convex = c(5, 5),concave = c(5, 5)) 
+
+urb_ppt_hull.aghy <- st_cast(st_sf(urb_ppt.aghy[[1]]), "MULTIPOLYGON", group_or_split = TRUE) 
+urb_ppt_hull.agpe <- st_cast(st_sf(urb_ppt.agpe[[1]]), "MULTIPOLYGON", group_or_split = TRUE) 
+urb_ppt_hull.elvi <- st_cast(st_sf(urb_ppt.elvi[[1]]), "MULTIPOLYGON", group_or_split = TRUE) 
+
+
+# urb. by ppt interaction
+urb_ppt.preddata.aghy <- expand.grid(Spp_code = "AGHY",
+                                    year = c(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_year, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_year),
+                                    PercentAg = 0,
+                                    PercentUrban = seq(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_urb, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_urb, length.out = 100),
+                                    mean_TIN_10km = 0,
+                                    ppt_10km = seq(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_ppt, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_ppt, length.out = 100))  %>% 
+  mutate(ppt_tenth = ppt_10km/80) %>% 
+  st_as_sf(coords = c("PercentUrban", "ppt_tenth"), remove = FALSE)  
+urb_ppt.aghy_within <- st_within( urb_ppt.preddata.aghy, urb_ppt_hull.aghy, sparse = FALSE)
+urb_ppt.preddata.aghy <- urb_ppt.preddata.aghy[urb_ppt.aghy_within,]
+
+
+urb_ppt.preddata.agpe <- expand.grid(Spp_code = "AGPE",
+                                    year = c(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_year, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_year),
+                                    PercentAg = 0,
+                                    PercentUrban = seq(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_urb, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_urb, length.out = 100),
+                                    mean_TIN_10km = 0,
+                                    ppt_10km = seq(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_ppt, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_ppt, length.out = 100)) %>% 
+  mutate(ppt_tenth = ppt_10km/80) %>% 
+  st_as_sf(coords = c("PercentUrban", "ppt_tenth"), remove = FALSE)  
+urb_ppt.agpe_within <- st_within( urb_ppt.preddata.agpe, urb_ppt_hull.agpe, sparse = FALSE)
+urb_ppt.preddata.agpe <- urb_ppt.preddata.agpe[urb_ppt.agpe_within,]
+
+
+urb_ppt.preddata.elvi <- expand.grid(Spp_code = "ELVI",
+                                    year = c(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_year, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_year),
+                                    PercentAg = 0,
+                                    PercentUrban = seq(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_urb, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_urb, length.out = 100),
+                                    mean_TIN_10km = 0,
+                                    ppt_10km = seq(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_ppt, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_ppt, length.out = 100)) %>% 
+  mutate(ppt_tenth = ppt_10km/80) %>% 
+  st_as_sf(coords = c("PercentUrban", "ppt_tenth"), remove = FALSE)  
+urb_ppt.elvi_within <- st_within( urb_ppt.preddata.elvi, urb_ppt_hull.elvi, sparse = FALSE)
+urb_ppt.preddata.elvi <- urb_ppt.preddata.elvi[urb_ppt.elvi_within,]
+
+
+urb_ppt.preddata <- bind_rows(urb_ppt.preddata.aghy, urb_ppt.preddata.agpe, urb_ppt.preddata.elvi) %>% 
+  mutate(collector_index = 9999, scorer_index = 9999,
+         species = case_when(Spp_code == "AGHY" ~ species_names[1],
+                             Spp_code == "AGPE" ~ species_names[2],
+                             Spp_code == "ELVI" ~ species_names[3]),
+         year_label = case_when(year >=0 ~ "max_year",
+                                year < 0 ~ "min_year")) %>% 
+  as_tibble() %>% select(-geometry) %>% 
+  na.omit()
+
+
+# gennerating predictiion
+
+urb_ppt.year.pred <- generate(
+  fit.year,
+  newdata = urb_ppt.preddata,
+  formula = ~ invlogit(fixed),#+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  n.samples = 500) 
+colnames(urb_ppt.year.pred) <- paste0("iter", 1:500) 
+
+urb_ppt.year.pred_df <- tibble(urb_ppt.preddata, as_tibble(urb_ppt.year.pred)) %>% 
+  mutate(year = year + data_summary$year,
+         PercentUrban = PercentUrban + data_summary$PercentUrban,
+         PercentAg= PercentAg + data_summary$PercentAg,
+         mean_TIN_10km= mean_TIN_10km + data_summary$mean_TIN_10km,
+         ppt_10km = ppt_10km + data_summary$ppt_10km) %>% 
+  pivot_longer(cols = iter1:iter500, names_to = "iteration", values_to = "posterior") %>% 
+  pivot_wider(id_cols = c(Spp_code, PercentAg, PercentUrban, mean_TIN_10km, ppt_10km, collector_index, scorer_index, species, iteration), names_from = c(year_label), values_from = posterior, names_prefix = "post.") %>% 
+  mutate(diff = (post.max_year - post.min_year)) %>% 
+  group_by(Spp_code, PercentAg, PercentUrban, mean_TIN_10km, ppt_10km, collector_index, scorer_index, species) %>% 
+  dplyr::summarise(diff_mean = mean(diff),
+                   diff_prob = max((sum(diff<0)/500),(sum(diff>0)/500))) %>% 
+  mutate(dataset = "urb_ppt")
+
+
+# nit by ppt interaction
+nit_ppt_coords <- data %>% 
+  select(-geometry) %>% 
+  as_tibble() %>% 
+  mutate(ppt_tenth = ppt_10km/30,
+         TIN_tenth = mean_TIN_10km/10) %>% 
+  st_as_sf(coords = c('TIN_tenth', 'ppt_tenth'), remove = FALSE)
+# ggplot(nit_ppt_coords) + geom_point(aes(x = ppt_tenth, y = TIN_tenth))
+nit_ppt.aghy <- fm_extensions(nit_ppt_coords%>% filter(Spp_code == "AGHY"),convex = c(5, 5),concave = c(5, 5)) 
+nit_ppt.agpe <- fm_extensions(nit_ppt_coords%>% filter(Spp_code == "AGPE"),convex = c(5, 5),concave = c(5, 5)) 
+nit_ppt.elvi <- fm_extensions(nit_ppt_coords%>% filter(Spp_code == "ELVI"),convex = c(5, 5),concave = c(5, 5)) 
+
+nit_ppt_hull.aghy <- st_cast(st_sf(nit_ppt.aghy[[1]]), "MULTIPOLYGON", group_or_split = TRUE) 
+nit_ppt_hull.agpe <- st_cast(st_sf(nit_ppt.agpe[[1]]), "MULTIPOLYGON", group_or_split = TRUE) 
+nit_ppt_hull.elvi <- st_cast(st_sf(nit_ppt.elvi[[1]]), "MULTIPOLYGON", group_or_split = TRUE) 
+
+
+
+
+nit_ppt.preddata.aghy <- expand.grid(Spp_code = "AGHY",
+                                     year = c(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_year, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_year),
+                                     PercentAg = 0,
+                                     PercentUrban = 0,
+                                     mean_TIN_10km = seq(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_nit, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_nit, length.out = 100),
+                                     ppt_10km = seq(quantile_summary[quantile_summary$Spp_code=="AGHY",]$min_ppt, quantile_summary[quantile_summary$Spp_code=="AGHY",]$max_ppt, length.out = 100))  %>% 
+  mutate(ppt_tenth = ppt_10km/30,
+         TIN_tenth = mean_TIN_10km/10) %>% 
+  st_as_sf(coords = c("TIN_tenth", "ppt_tenth"), remove = FALSE)  
+nit_ppt.aghy_within <- st_within( nit_ppt.preddata.aghy, nit_ppt_hull.aghy, sparse = FALSE)
+nit_ppt.preddata.aghy <- nit_ppt.preddata.aghy[nit_ppt.aghy_within,]
+
+
+nit_ppt.preddata.agpe <- expand.grid(Spp_code = "AGPE",
+                                     year = c(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_year, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_year),
+                                     PercentAg = 0,
+                                     PercentUrban = 0,
+                                     mean_TIN_10km = seq(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_nit, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_nit, length.out = 100),
+                                     ppt_10km = seq(quantile_summary[quantile_summary$Spp_code=="AGPE",]$min_ppt, quantile_summary[quantile_summary$Spp_code=="AGPE",]$max_ppt, length.out = 100)) %>% 
+  mutate(ppt_tenth = ppt_10km/30,
+         TIN_tenth = mean_TIN_10km/10) %>% 
+  st_as_sf(coords = c("TIN_tenth", "ppt_tenth"), remove = FALSE)  
+nit_ppt.agpe_within <- st_within( nit_ppt.preddata.agpe, nit_ppt_hull.agpe, sparse = FALSE)
+nit_ppt.preddata.agpe <- nit_ppt.preddata.agpe[nit_ppt.agpe_within,]
+
+
+nit_ppt.preddata.elvi <- expand.grid(Spp_code = "ELVI",
+                                     year = c(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_year, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_year),
+                                     PercentAg = 0,
+                                     PercentUrban = 0,
+                                     mean_TIN_10km = seq(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_nit, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_nit, length.out = 100),
+                                     ppt_10km = seq(quantile_summary[quantile_summary$Spp_code=="ELVI",]$min_ppt, quantile_summary[quantile_summary$Spp_code=="ELVI",]$max_ppt, length.out = 100)) %>% 
+  mutate(ppt_tenth = ppt_10km/30,
+         TIN_tenth = mean_TIN_10km/10) %>% 
+  st_as_sf(coords = c("TIN_tenth", "ppt_tenth"), remove = FALSE)  
+nit_ppt.elvi_within <- st_within( nit_ppt.preddata.elvi, nit_ppt_hull.elvi, sparse = FALSE)
+nit_ppt.preddata.elvi <- nit_ppt.preddata.elvi[nit_ppt.elvi_within,]
+
+
+nit_ppt.preddata <- bind_rows(nit_ppt.preddata.aghy, nit_ppt.preddata.agpe, nit_ppt.preddata.elvi) %>% 
+  mutate(collector_index = 9999, scorer_index = 9999,
+         species = case_when(Spp_code == "AGHY" ~ species_names[1],
+                             Spp_code == "AGPE" ~ species_names[2],
+                             Spp_code == "ELVI" ~ species_names[3]),
+         year_label = case_when(year >=0 ~ "max_year",
+                                year < 0 ~ "min_year")) %>% 
+  as_tibble() %>% select(-geometry) %>% 
+  na.omit()
+
+
+# gennerating predictiion
+
+nit_ppt.year.pred <- generate(
+  fit.year,
+  newdata = nit_ppt.preddata,
+  formula = ~ invlogit(fixed),#+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  n.samples = 500) 
+colnames(nit_ppt.year.pred) <- paste0("iter", 1:500) 
+
+nit_ppt.year.pred_df <- tibble(nit_ppt.preddata, as_tibble(nit_ppt.year.pred)) %>% 
+  mutate(year = year + data_summary$year,
+         PercentUrban = PercentUrban + data_summary$PercentUrban,
+         PercentAg= PercentAg + data_summary$PercentAg,
+         mean_TIN_10km= mean_TIN_10km + data_summary$mean_TIN_10km,
+         ppt_10km = ppt_10km + data_summary$ppt_10km) %>% 
+  pivot_longer(cols = iter1:iter500, names_to = "iteration", values_to = "posterior") %>% 
+  pivot_wider(id_cols = c(Spp_code, PercentAg, PercentUrban, mean_TIN_10km, ppt_10km, collector_index, scorer_index, species, iteration), names_from = c(year_label), values_from = posterior, names_prefix = "post.") %>% 
+  mutate(diff = (post.max_year - post.min_year)) %>% 
+  group_by(Spp_code, PercentAg, PercentUrban, mean_TIN_10km, ppt_10km, collector_index, scorer_index, species) %>% 
+  dplyr::summarise(diff_mean = mean(diff),
+                   diff_prob = max((sum(diff<0)/500),(sum(diff>0)/500))) %>% 
+  mutate(dataset = "nit_ppt")
+
+year.ppt_df <- bind_rows(ag_ppt.year.pred_df, urb_ppt.year.pred_df, nit_ppt.year.pred_df)
+
+########################################################################################################################
+######### Plotting the temporal trends across precipitation #########
+########################################################################################################################
+ag_ppt_trend <- ggplot(year.ppt_df %>% filter(dataset == "ag_ppt"))+
+  geom_raster(aes(  x = ppt_10km, y = PercentAg, fill = diff_mean )) +
+  stat_contour(aes( x = ppt_10km, y = PercentAg, z = diff_prob, alpha = ..level..^4),position = "identity", breaks = 0.90, linewidth = .5, color = "black")+
+  stat_contour(aes( x = ppt_10km, y = PercentAg, z = diff_prob, alpha = ..level..^4),position = "identity", breaks = 0.80, linewidth = .5, color = "black")+
+  # geom_sf(data = ag_urb.aghy.95, aes(geometry = ag_urb.aghy..1..),fill = NA)+
+  # geom_point(data = endo_herb, aes(x = PercentAg,y = PercentUrban), alpha = .1)+
+  # coord_sf()+
+  facet_wrap(~species , ncol = 1, strip.position = "right")+#, scales = "free_x")+
+  scale_alpha_continuous(limits = c(0,1), guide = "none")+
+  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-1, 1))+
+  # scale_fill_viridis_c(option = "turbo")+
+  labs(fill = "% Prevalence / Year", x= "Precip. (mm./year)", y= "Ag. Land Cover (%)")+
+  theme_classic()+
+  theme(strip.background = element_blank(),
+        strip.text.y.right = element_blank())
+
+# ag_ppt_trend
+
+ag_ppt_prob <- ggplot(year.ppt_df %>% filter(dataset == "ag_ppt"))+
+  geom_raster(aes(x = ppt_10km, y = PercentAg, fill = diff_prob )) +
+  stat_contour(aes(x = ppt_10km, y = PercentAg, z = diff_prob, alpha = ..level..^4),position = "identity", breaks = seq(.5:1, by = .05), linewidth = .5, color = "black")+
+  # coord_sf()+
+  facet_wrap(~species, ncol = 1,  strip.position = "right", scales = "free_x")+
+  scale_alpha_continuous(limits = c(0,1), guide = "none")+
+  scale_fill_distiller(palette = "YlGn", direction = 1, limits = c(.5, 1))+
+  # scale_fill_viridis_c(option = "turbo")+
+  labs(fill = "Probability of Effect", x= "Precip. (mm./year)", y= "Ag. Land Cover (%)")+
+  theme_classic()+
+  theme(strip.background = element_blank(),
+        strip.text.y.right = element_blank())
+# ag_ppt_prob
+
+urb_ppt_trend <- ggplot(year.ppt_df %>% filter(dataset == "urb_ppt"))+
+  geom_raster(aes(  x = ppt_10km, y = PercentUrban, fill = diff_mean )) +
+  stat_contour(aes( x = ppt_10km, y = PercentUrban, z = diff_prob, alpha = ..level..^4),position = "identity", breaks = 0.90, linewidth = .5, color = "black")+
+  stat_contour(aes( x = ppt_10km, y = PercentUrban, z = diff_prob, alpha = ..level..^4),position = "identity", breaks = 0.80, linewidth = .5, color = "black")+
+  # geom_sf(data = urb_urb.aghy.95, aes(geometry = urb_urb.aghy..1..),fill = NA)+
+  # geom_point(data = endo_herb, aes(x = PercentAg,y = PercentUrban), alpha = .1)+
+  # coord_sf()+
+  facet_wrap(~species , ncol = 1, strip.position = "right")+#, scales = "free_x")+
+  scale_alpha_continuous(limits = c(0,1), guide = "none")+
+  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-1, 1))+
+  # scale_fill_viridis_c(option = "turbo")+
+  labs(fill = "% Prevalence / Year", x= "Precip. (mm./year)", y= "Urban Land Cover (%)")+
+  theme_classic()+
+  theme(strip.background = element_blank(),
+        strip.text.y.right = element_blank())
+
+# urb_ppt_trend
+
+urb_ppt_prob <- ggplot(year.ppt_df %>% filter(dataset == "urb_ppt"))+
+  geom_raster(aes(x = ppt_10km, y = PercentUrban, fill = diff_prob )) +
+  stat_contour(aes(x = ppt_10km, y = PercentUrban, z = diff_prob, alpha = ..level..^4),position = "identity", breaks = seq(.5:1, by = .05), linewidth = .5, color = "black")+
+  # coord_sf()+
+  facet_wrap(~species, ncol = 1,  strip.position = "right", scales = "free_x")+
+  scale_alpha_continuous(limits = c(0,1), guide = "none")+
+  scale_fill_distiller(palette = "YlGn", direction = 1, limits = c(.5, 1))+
+  # scale_fill_viridis_c(option = "turbo")+
+  labs(fill = "Probability of Effect", x= "Precip. (mm./year)", y= "Urban Land Cover (%)")+
+  theme_classic()+
+  theme(strip.background = element_blank(),
+        strip.text.y.right = element_blank())
+# urb_ppt_prob
+
+
+nit_ppt_trend <- ggplot(year.ppt_df %>% filter(dataset == "nit_ppt"))+
+  geom_raster(aes(  x = ppt_10km, y = mean_TIN_10km, fill = diff_mean )) +
+  stat_contour(aes( x = ppt_10km, y = mean_TIN_10km, z = diff_prob, alpha = ..level..^4),position = "identity", breaks = 0.90, linewidth = .5, color = "black")+
+  stat_contour(aes( x = ppt_10km, y = mean_TIN_10km, z = diff_prob, alpha = ..level..^4),position = "identity", breaks = 0.80, linewidth = .5, color = "black")+
+  # geom_sf(data = nit_urb.aghy.95, aes(geometry = nit_urb.aghy..1..),fill = NA)+
+  # geom_point(data = endo_herb, aes(x = PercentAg,y = PercentUrban), alpha = .1)+
+  # coord_sf()+
+  facet_wrap(~species , ncol = 1, strip.position = "right")+#, scales = "free_x")+
+  scale_alpha_continuous(limits = c(0,1), guide = "none")+
+  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-1, 1))+
+  # scale_fill_viridis_c(option = "turbo")+
+  labs(fill = "% Prevalence / Year", x= "Precip. (mm./year)", y= "Nitrogen Deposition (kg N/km^2)")+
+  theme_classic()+
+  theme(strip.background = element_blank(),
+        strip.text.y.right = element_blank())
+
+# nit_ppt_trend
+
+nit_ppt_prob <- ggplot(year.ppt_df %>% filter(dataset == "nit_ppt"))+
+  geom_raster(aes(x = ppt_10km,  y = mean_TIN_10km, fill = diff_prob )) +
+  stat_contour(aes(x = ppt_10km, y = mean_TIN_10km, z = diff_prob, alpha = ..level..^4),position = "identity", breaks = seq(.5:1, by = .05), linewidth = .5, color = "black")+
+  # coord_sf()+
+  facet_wrap(~species, ncol = 1,  strip.position = "right", scales = "free_x")+
+  scale_alpha_continuous(limits = c(0,1), guide = "none")+
+  scale_fill_distiller(palette = "YlGn", direction = 1, limits = c(.5, 1))+
+  # scale_fill_viridis_c(option = "turbo")+
+  labs(fill = "Probability of Effect", x= "Precip. (mm./year)", y= "Nitrogen Deposition (kg N/km^2)")+
+  theme_classic()+
+  theme(strip.background = element_blank(),
+        strip.text.y.right = element_blank())
+# nit_ppt_prob
+
+
+# making one nice big figure
+
+ag_ppt_trend_tag <- tag_facet(ag_ppt_trend)
+urb_ppt_trend_tag <- tag_facet(urb_ppt_trend, tag_pool =  letters[-(1:3)])
+nit_ppt_trend_tag <- tag_facet(nit_ppt_trend, tag_pool =  letters[-(1:6)])
+
+ag_ppt_prob_tag <- tag_facet(ag_ppt_prob, tag_pool =  letters[-(1:9)])
+urb_ppt_prob_tag <- tag_facet(urb_ppt_prob, tag_pool =  letters[-(1:12)])
+nit_ppt_prob_tag <- tag_facet(nit_ppt_prob, tag_pool =  letters[-(1:15)])
+
+
+Fig4A <- ag_ppt_trend_tag + urb_ppt_trend_tag + nit_ppt_trend_tag + plot_layout(nrow = 1, guides = "collect") + plot_annotation(title = "Rate of Change in Endophyte Prevalence")& theme(plot.title = element_text(size = rel(1.5)))
+Fig4B <- ag_ppt_prob_tag + urb_ppt_prob_tag + nit_ppt_prob_tag + plot_layout(nrow = 1, guides = "collect") + plot_annotation(title = "Posterior Probability of Effect")& theme(plot.title = element_text(size = rel(1.5)))
+Fig4 <- wrap_elements(Fig4A) / wrap_elements(Fig4B)
+ggsave(Fig4, filename = "Plots/Figure_4.png", width = 12, height = 12)
+
 
 

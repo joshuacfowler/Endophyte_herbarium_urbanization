@@ -176,6 +176,8 @@ endo_herb <- left_join(endo_herb_sf, climate, by = c("lon", "lat", "year")) %>%
   dplyr::distinct(Sample_id, score_number, .keep_all = TRUE)
 
 length(unique(endo_herb$Sample_id))
+
+view(endo_herb %>% filter(score_number == 1) %>%  group_by(Spp_code) %>% summarize(n()))
 ####### calculate georeferencing bounding box widths #####
 
 east_west_bb <- endo_herb %>% 

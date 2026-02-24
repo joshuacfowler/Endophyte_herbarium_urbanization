@@ -738,7 +738,7 @@ components <- sub(components, pattern = "mean_TIN_10km", replacement = "Nitrogen
 components <- sub(components, pattern = "Spp_code", replacement = "Species")
 components <- sub(components, pattern = "ppt_10km", replacement = "Precip.")
 components <- sub(components, pattern = "tmean_10km", replacement = "Temp.")
-components <- sub(components, pattern = "year", replacement = "Year")
+components <- gsub(components, pattern = "year", replacement = "Year")
 
 
 
@@ -755,6 +755,12 @@ for(i in 1:length(fit_list)){
 }
 
 
+components <- table$components
+dic <- table$dic
+waic <- table$waic
+cpo <- table$cpo
+auc <- table$auc
+convergence <- rep(0,length = length(components))
 
 
 # model comparison table
@@ -764,7 +770,9 @@ table <- table %>%
   mutate(components = factor(components, levels = (table$components)[rev(order(table$dic))]),
          year = grepl("Year", components))
 write.csv(table, "Analyses/model.comparison.csv")
+table <- read.csv("Analyses/model.comparison.csv") %>% arrange(dic, waic, cpo, auc)
 
+table$components <- gsub(table$components, pattern = "year", replacement = "Year")
 
 # fill_colors <- RColorBrewer::brewer.pal(4,"Set1")
        
