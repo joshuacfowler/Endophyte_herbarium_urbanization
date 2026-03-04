@@ -2,6 +2,7 @@
 # Authors: Mallory Tucker and Joshua Fowler
 # Updated: May 21, 2025
 
+
 library(devtools)
 # library("devtools")
 # devtools::install_github(repo = "https://github.com/hrue/r-inla", ref = "stable", subdir = "rinla", build = FALSE, force = TRUE)
@@ -10,7 +11,7 @@ library(dplyr)
 library(tidyverse) # for data manipulation and ggplot
 library(INLA) # for fitting integrated nested Laplace approximation models
 # devtools::install_github('timcdlucas/INLAutils')
-library(INLAutils) # supposedly has a function to plot residuals, might not need?
+# library(INLAutils) # supposedly has a function to plot residuals, might not need?
 library(inlabru)
 library(fmesher)
 
@@ -23,11 +24,13 @@ library(tidyterra)
 library(tidybayes) # using this for dotplots
 library(GGally)
 library(patchwork)
+library(metR)
 library(egg) # for labelling panels
 library(ggmap)
 library(pROC)
 library(ggplot2)
 library(maps)
+library(alphahull)
 
 invlogit<-function(x){exp(x)/(1+exp(x))}
 species_colors <- c("#1b9e77","#d95f02","#7570b3")
@@ -36,15 +39,8 @@ endophyte_colors <- c("#fdedd3","#f3c8a8", "#5a727b", "#4986c7", "#181914",  "#1
 species_codes <- c("AGHY", "AGPE", "ELVI")
 species_names <- c("A. hyemalis", "A. perennans", "E. virginicus")
 
-tag_facet2 <- function(p, open = "(", close = ")", tag_pool = letters, x = -Inf, y = Inf, 
-                       hjust = -0.5, vjust = 1.5, fontface = 2, family = "", ...) {
-  
-  gb <- ggplot_build(p)
-  lay <- gb$layout$layout
-  tags <- cbind(lay, label = paste0(open, tag_pool[lay$PANEL], close), x = x, y = y)
-  p + geom_text(data = tags, aes_string(x = "x", y = "y", label = "label"), ..., hjust = hjust, 
-                vjust = vjust, fontface = fontface, family = family, inherit.aes = FALSE)
-}
+
+
 
 ################################################################################
 ############ Read in the herbarium dataset ############################### 
@@ -57,50 +53,90 @@ Joshpath <- "Analyses/"
 path <- Joshpath
 
 
-# endo_herb_georef <- read_csv(file = paste0(path, "Zonalhist_NLCD_10km_.csv")) %>%
-#   filter(Country != "Canada") %>%
-#   mutate(Spp_code = case_when(grepl("AGHY", Sample_id) ~ "AGHY",
-#                               grepl("ELVI", Sample_id) ~ "ELVI",
-#                               grepl("AGPE", Sample_id) ~ "AGPE")) %>%
-#   mutate(species_index = as.factor(case_when(Spp_code == "AGHY" ~ "1",
-#                                              Spp_code == "AGPE" ~ "2",
-#                                              Spp_code == "ELVI" ~ "3"))) %>%
-#   mutate(species = case_when(Spp_code == "AGHY" ~ "A. hyemalis",
-#                              Spp_code == "AGPE" ~ "A. perennans",
-#                              Spp_code == "ELVI" ~ "E. virginicus")) %>%
-#   mutate(decade = floor(year/10)*10)%>%
-#   mutate(DevelopedOpenSpace = HISTO_21,
-#          DevelopedLowIntensity = HISTO_22,
-#          MediumDeveloped = HISTO_23,
-#          HighDeveloped = HISTO_24,
-#          PastureHay = HISTO_81,
-#          CultivatedCrops = HISTO_82,
-#          TotalAg = PastureHay + CultivatedCrops,
-#          TotalPixels = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24 + HISTO_0 + HISTO_11 +HISTO_12 + HISTO_31 +HISTO_41 + HISTO_42 + HISTO_43 + HISTO_52 + HISTO_71+ HISTO_90 + TotalAg + HISTO_95,
-#          TotalDeveloped = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24,
-#          OtherLC = (TotalPixels - (TotalAg + TotalDeveloped))/TotalPixels *100,
-#          PercentUrban = TotalDeveloped/TotalPixels * 100,
-#          PercentAg = TotalAg/TotalPixels * 100)
-# 
-# # Doing some filtering to remove NA's and some data points that probably aren't accurate species id's
-# endo_herb <- endo_herb_georef %>%
-#   filter(!is.na(Endo_statu)) %>%
-#   filter(!is.na(Spp_code)) %>%
-#   filter(!is.na(lon) & !is.na(year)) %>%
-#   filter(lon>-110 ) %>%
-#   filter(Country != "Canada" ) %>%
-#   mutate(year_bin = case_when(year<1970 ~ "pre-1970",
-#                               year>=1970 ~ "post-1970")) %>%
-#   mutate(endo_status_text = case_when(Endo_statu == 0 ~ "E-",
-#                                       Endo_statu == 1 ~ "E+"))
-# #loading in nitrogen data too
-# nit <- read.csv(file = "endo_herb_nit.csv")
-# nitendoherb <- merge(nit, endo_herb)
-# endo_herb <- nitendoherb
-# write.csv(endo_herb, file = "EndoHerb_withNitrogen.csv")
+endo_herb_georef <- read_csv(file = paste0(path, "full_Zonalhist_NLCD_2001_10km.csv")) %>%
+  filter(Country != "Canada") %>%
+  filter(Country != "CA") %>%
+  mutate(Spp_code = case_when(grepl("AGHY", Sample_id) ~ "AGHY",
+                              grepl("ELVI", Sample_id) ~ "ELVI",
+                              grepl("AGPE", Sample_id) ~ "AGPE")) %>%
+  mutate(species_index = as.factor(case_when(Spp_code == "AGHY" ~ "1",
+                                             Spp_code == "AGPE" ~ "2",
+                                             Spp_code == "ELVI" ~ "3"))) %>%
+  mutate(species = case_when(Spp_code == "AGHY" ~ "A. hyemalis",
+                             Spp_code == "AGPE" ~ "A. perennans",
+                             Spp_code == "ELVI" ~ "E. virginicus")) %>%
+  mutate(decade = floor(year/10)*10)%>%
+  mutate(DevelopedOpenSpace = HISTO_21,
+         DevelopedLowIntensity = HISTO_22,
+         MediumDeveloped = HISTO_23,
+         HighDeveloped = HISTO_24,
+         PastureHay = HISTO_81,
+         CultivatedCrops = HISTO_82,
+         TotalAg = PastureHay + CultivatedCrops,
+         TotalPixels = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24 + HISTO_0 + HISTO_11 +HISTO_12 + HISTO_31 +HISTO_41 + HISTO_42 + HISTO_43 + HISTO_52 + HISTO_71+ HISTO_90 + TotalAg + HISTO_95,
+         TotalDeveloped = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24,
+         OtherLC = (TotalPixels - (TotalAg + TotalDeveloped))/TotalPixels *100,
+         PercentUrban = TotalDeveloped/TotalPixels * 100,
+         PercentAg = TotalAg/TotalPixels * 100)
 
-endo_herb_10km <- read_csv(file = "~/Dropbox/endophyte_herbarium_urbanization_project/Mallorys_data/EndoHerb_withNitrogen.csv") %>%
+#fixing column names in yearly_endo and filtering
+yearly_endo <- read_csv(file = paste0(path,"endo_herb_yearly_nlcd.csv"))%>%
+  filter(Country != "Canada") %>%
+  mutate(Spp_code = case_when(grepl("AGHY", Sample_id) ~ "AGHY",
+                              grepl("ELVI", Sample_id) ~ "ELVI",
+                              grepl("AGPE", Sample_id) ~ "AGPE")) %>%
+  mutate(species_index = as.factor(case_when(Spp_code == "AGHY" ~ "1",
+                                             Spp_code == "AGPE" ~ "2",
+                                             Spp_code == "ELVI" ~ "3"))) %>%
+  mutate(species = case_when(Spp_code == "AGHY" ~ "A. hyemalis",
+                             Spp_code == "AGPE" ~ "A. perennans",
+                             Spp_code == "ELVI" ~ "E. virginicus")) %>%
+  mutate(decade = floor(year/10)*10)%>%
+  mutate(DevelopedOpenSpace = HISTO_21,
+         DevelopedLowIntensity = HISTO_22,
+         MediumDeveloped = HISTO_23,
+         HighDeveloped = HISTO_24,
+         PastureHay = HISTO_81,
+         CultivatedCrops = HISTO_82,
+         TotalAg = PastureHay + CultivatedCrops,
+         TotalPixels = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24 + HISTO_11 +HISTO_12 + HISTO_31 +HISTO_41 + HISTO_42 + HISTO_43 + HISTO_52 + HISTO_71+ HISTO_90 + TotalAg + HISTO_95,
+         TotalDeveloped = HISTO_21 + HISTO_22 + HISTO_23 + HISTO_24,
+         OtherLC = (TotalPixels - (TotalAg + TotalDeveloped))/TotalPixels *100,
+         spec_PercentUrban = TotalDeveloped/TotalPixels * 100,
+         spec_PercentAg = TotalAg/TotalPixels * 100)%>%
+  select(Sample_id,spec_PercentUrban, spec_PercentAg)
 
+
+
+endo_herb_georef1 <- left_join(endo_herb_georef, yearly_endo, by = "Sample_id")
+
+
+# Doing some filtering to remove NA's and some data points that probably aren't accurate species id's
+endo_herb_merge1 <- endo_herb_georef1 %>%
+  filter(!is.na(Endo_status_liberal)) %>%
+  filter(!is.na(Spp_code)) %>%
+  filter(!is.na(lon) & !is.na(year)) %>%
+  filter(lon>-110 ) %>%
+  filter(Country != "Canada" ) %>%
+  mutate(year_bin = case_when(year<1970 ~ "pre-1970",
+                              year>=1970 ~ "post-1970")) %>%
+  mutate(endo_status_text = case_when(Endo_status_liberal == 0 ~ "E-",
+                                      Endo_status_liberal == 1 ~ "E+")) 
+#loading in nitrogen data too
+# nit <- read.csv(file = "endo_herb_nit.csv") %>%
+#   select(Sample_id, NO3_mean, NH4_mean, TIN_mean)
+
+nit_avgs <- read.csv(file = paste0(path, "nitrogen_mean_df.csv")) %>% 
+  select(lon, lat, buffer, mean_TIN, mean_NO3, mean_NH4) %>% 
+  pivot_wider(id_cols = c(lon, lat), names_from = c("buffer"), values_from = c("mean_TIN", "mean_NO3", "mean_NH4"))
+endo_herb_merge2 <- left_join(endo_herb_merge1, nit_avgs, by = c("lon", "lat"))
+
+
+nit_yearly <- read.csv(file = paste0(path,"nitrogen_yearly_df.csv")) %>% 
+  select(lon, lat, year, buffer, TIN, NO3, NH4) %>% 
+  pivot_wider(id_cols = c(lon, lat, year), names_from = c("buffer"), values_from = c("TIN", "NO3", "NH4"))
+
+endo_herb <- left_join(endo_herb_merge2, nit_yearly, by = c("lon", "lat", "year")) %>% 
   mutate(sample_temp = Sample_id) %>%
   separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
   mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
@@ -109,42 +145,14 @@ endo_herb_10km <- read_csv(file = "~/Dropbox/endophyte_herbarium_urbanization_pr
   mutate(species = case_when(spp_code == "AGHY" ~ "A. hyemalis",
                              spp_code == "AGPE" ~ "A. perennans",
                              spp_code == "ELVI" ~ "E. virginicus")) %>%
-  mutate(std_year = (year-mean(year, na.rm = T)),
-         std_NO3 = (NO3_mean - mean(NO3_mean, na.rm = T)),
-         std_NH4 = (NH4_mean - mean(NH4_mean, na.rm = T)),
-         std_TIN = (TIN_mean - mean(TIN_mean, na.rm = T)),
-         std_urb = (PercentUrban - mean(PercentUrban, na.rm = T)),
-         std_ag = (PercentAg - mean(PercentAg, na.rm = T))) %>%  # I am mean centering but not scaling by standard deviation to preserve units for interpretation of the parameter values
   filter(scorer_id != "Scorer26") %>% 
   filter(!is.na(Endo_status_liberal)) %>%
   filter(!is.na(spp_code)) %>%
   filter(!is.na(lon) & !is.na(year)) %>%
-  filter(!is.na(PercentAg), !is.na(NO3_mean)) 
+  filter(!is.na(PercentAg), !is.na(mean_NO3_10km)) 
 
 
-# dataset with land cover types extracted from 30km radius buffer around points
-endo_herb_30km <- read_csv(file = "~/Dropbox/endophyte_herbarium_urbanization_project/Mallorys_data/EndoHerb_withNitrogen_avgcosize.csv") %>%
-  mutate(sample_temp = Sample_id) %>%
-  separate(sample_temp, into = c("Herb_code", "spp_code", "specimen_code", "tissue_code")) %>%
-  mutate(species_index = as.factor(case_when(spp_code == "AGHY" ~ "1",
-                                             spp_code == "AGPE" ~ "2",
-                                             spp_code == "ELVI" ~ "3"))) %>%
-  mutate(species = case_when(spp_code == "AGHY" ~ "A. hyemalis",
-                             spp_code == "AGPE" ~ "A. perennans",
-                             spp_code == "ELVI" ~ "E. virginicus")) %>%
-  mutate(std_year = (year-mean(year, na.rm = T)),
-         # std_nit = (NO3_mean - mean(NO3_mean, na.rm = T))/sd(NO3_mean, na.rm = T),
-         std_urb_30km = (PercentUrban - mean(PercentUrban, na.rm = T)),
-         std_ag_30km = (PercentAg - mean(PercentAg, na.rm = T))) %>%  # I am mean centering but not scaling by standard deviation to preserve units for interpretation of the parameter values
-  filter(scorer_id != "Scorer26") %>% 
-  filter(!is.na(Endo_status_liberal)) %>%
-  filter(!is.na(spp_code)) %>%
-  filter(!is.na(lon) & !is.na(year)) %>%
-  filter(!is.na(PercentAg), !is.na(NO3_mean)) %>% 
-  select(Institution_specimen_id, Sample_id, scorer_id, new_id, std_urb_30km, std_ag_30km)
 
-endo_herb <- endo_herb_10km %>% left_join(endo_herb_30km)
-# updating the collector labels
 
 # Creating scorer and collector levels
 scorer_levels <- levels(as.factor(endo_herb$scorer_id))
@@ -166,7 +174,7 @@ epsg6703km <- paste(
   "+units=km +no_defs"
 )
 
-endo_herb<- endo_herb %>% 
+endo_herb_sf<- endo_herb %>% 
   st_as_sf(coords = c("lon", "lat"), crs = 4326, remove = FALSE) %>% 
   st_transform(epsg6703km) %>% 
   mutate(
@@ -178,48 +186,44 @@ endo_herb<- endo_herb %>%
 
 
 
-# register_google(key = "")
-# map <- ggmap::get_map(zoom = 3, source = "google", maptype = c("satellite"))
+climate <- read_csv(file = paste0(path,"PRISM_yearly_df.csv")) %>% 
+  pivot_wider(id_cols = c(lon, lat, year), names_from = c("buffer"), values_from = c("tmean", "ppt"))
 
+endo_herb <- left_join(endo_herb_sf, climate, by = c("lon", "lat", "year")) %>% 
+  filter(year>=1895) %>% 
+  filter(seed_scored != 0) %>% 
+  filter(Sample_id != "BRIT_AGHY_506") %>% # dropping this because the georeferenceing is wrong
+  filter(!(Sample_id == "AM_ELVI_122" & is.na(Municipality))) %>% 
+  dplyr::distinct(Sample_id, score_number, .keep_all = TRUE)
+
+
+
+
+#load in map outline data
 outline_map <- map_data("world")
 states_shape <- map_data("state")
-counties_shape <- map_data("county")
-# ggplot()+
-#   geom_map(data = counties_shape, map = counties_shape, aes(long, lat, map_id = region))
+counties <- map_data("county")
 
-
-
-mode <- function(codes){
-  which.max(tabulate(codes))
-}
-
-summary_endo_herb <- endo_herb %>% 
-  mutate(Sample_id_temp = Sample_id) %>% 
-  separate(Sample_id_temp, sep = "_", into = c("herbarium", "spp_code", "plant_no")) %>% select(-spp_code, -plant_no) %>% 
-  # filter(seed_scored>0) %>% 
-  filter(month<=12&month>0) %>% 
-  group_by(species) %>% 
-  dplyr::summarize(n(),
-            avg_seed = mean(seed_scored, na.rm = T),
-            avg_month = mode(as.numeric(month)))
-
-#########################################################################################
-################################# urb and ag max and min percentages, N ####################
-#########################################################################################
-max(endo_herb$PercentAg)
-min(endo_herb$PercentAg)
-
-max(endo_herb$PercentUrban)
-min(endo_herb$PercentUrban)
-
-max(endo_herb$NO3_mean)
-min(endo_herb$NO3_mean)
 
 ##### Building a spatial mesh #####
 
 # Build the spatial mesh from the coords for each species and a boundary around each species predicted distribution (eventually from Jacob's work ev)
-
-data <- endo_herb
+data_summary <- endo_herb %>% 
+  dplyr::summarize(year = mean(year, na.rm = T),
+                   PercentUrban = mean(PercentUrban, na.rm = T),
+                   PercentAg = mean(PercentAg, na.rm = T),
+                   mean_TIN_10km = mean(mean_TIN_10km, na.rm = T),
+                   tmean_10km = mean(tmean_10km, na.rm = T),
+                   ppt_10km = mean(ppt_10km, na.rm = T))
+data <- endo_herb %>% 
+  mutate(year = year - data_summary$year,
+         PercentUrban = PercentUrban - data_summary$PercentUrban,
+         PercentAg = PercentAg - data_summary$PercentAg,
+         mean_TIN_10km = mean_TIN_10km - data_summary$mean_TIN_10km,
+         tmean_10km = tmean_10km - data_summary$tmean_10km,
+         ppt_10km = ppt_10km - data_summary$ppt_10km) %>%  
+  mutate(Spp_index = as.numeric(as.factor(Spp_code))) %>% 
+  filter(!is.na(ppt_10km))
 
 # Build the spatial mesh from the coords for each species and a boundary around each species predicted distribution (eventually from Jacob's work ev)
 coords <- cbind(data$easting, data$northing)
@@ -241,7 +245,7 @@ bdry <- st_intersection(coastline$geom, non_convex_bdry[[1]])
 
 # plot(bdry)
 
-bdry_polygon <- st_cast(st_sf(bdry), "MULTIPOLYGON", group_or_split = TRUE) %>% st_union() %>% 
+bdry_polygon <- st_cast(st_zm(bdry), "MULTIPOLYGON", group_or_split = TRUE) %>% st_union() %>% 
   as("Spatial")
 
 non_convex_bdry[[1]] <- bdry_polygon
@@ -253,7 +257,7 @@ max.edge = diff(range(coords[,1]))/(100)
 
 mesh <- fm_mesh_2d_inla(
   # loc = coords,
-  boundary = non_convex_bdry, max.edge = c(max.edge, max.edge*4), # km inside and outside
+  boundary = non_convex_bdry, max.edge = c(max.edge*2, max.edge*8), # km inside and outside
   cutoff = max.edge,
   crs = fm_crs(data)
   # crs=CRS(proj4string(bdry_polygon))
@@ -270,7 +274,7 @@ mesh_plot <- ggplot() +
   labs(x = "", y = "", color = "Species")+
   theme(legend.text = element_text(face = "italic"))
 # mesh_plot
-# ggsave(mesh_plot, filename = "mesh_plot.png", width = 6, height = 5)
+# ggsave(mesh_plot, filename = "Plots/mesh_plot.png", width = 6, height = 5)
 
 
 
@@ -313,36 +317,24 @@ pc_prec <- list(prior = "pcprec", param = c(1, 0.1))
 
 # version with all species in one model. Note that we remove the intercept, and then we have to specify that the species is a factor 
 
+# comparing different levels of interactions
 
 
-# Using TIN
-s_components.10km.year <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*std_TIN + Spp_code*std_year*std_ag + Spp_code*std_year*std_urb, model = "fixed")+
+
+
+s_components <-  ~ 0 +  fixed(main = ~ 0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km)^4, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
 
 
-s_components.10km<-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_ag + Spp_code*std_urb + Spp_code*std_TIN, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde) 
 
-
-
-s_components.30km.year <-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_year*std_TIN + Spp_code*std_year*std_ag_30km + Spp_code*std_year*std_urb_30km, model = "fixed")+
+s_components.year <-  ~ 0 +  fixed(main = ~ 0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km)^2, model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
 
 
-s_components.30km<-  ~ 0 +  fixed(main = ~ 0 + Spp_code*std_ag_30km + Spp_code*std_urb_30km + Spp_code*std_TIN, model = "fixed")+
-  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
-  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
-  space_int(coords, model = spde) 
-
-
-
-# putting the components with the formula
 s_formula <- Endo_status_liberal ~ .
 
 
@@ -350,76 +342,49 @@ s_formula <- Endo_status_liberal ~ .
 
 
 
-fit.10km.year <- bru(s_components.10km.year,
-             like(
-               formula = s_formula,
-               family = "binomial",
-               Ntrials = 1,
-               data = data
-             ),
-             options = list(
-               control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-               control.inla = list(int.strategy = "eb"),
-               verbose = TRUE
-             )
+fit <- bru(s_components,
+           like(
+             formula = s_formula,
+             family = "binomial",
+             Ntrials = 1,
+             data = data
+           ),
+           options = list(
+             control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
+             control.inla = list(int.strategy = "eb"),
+             verbose = TRUE
+           )
 )
 
-
-fit.10km <- bru(s_components.10km,
-             like(
-               formula = s_formula,
-               family = "binomial",
-               Ntrials = 1,
-               data = data
-             ),
-             options = list(
-               control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-               control.inla = list(int.strategy = "eb"),
-               verbose = TRUE
-             )
+fit.year <- bru(s_components.year,
+                like(
+                  formula = s_formula,
+                  family = "binomial",
+                  Ntrials = 1,
+                  data = data
+                ),
+                options = list(
+                  control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
+                  control.inla = list(int.strategy = "eb"),
+                  verbose = TRUE
+                )
 )
 
-fit.30km.year <- bru(s_components.30km.year,
-                    like(
-                      formula = s_formula,
-                      family = "binomial",
-                      Ntrials = 1,
-                      data = data
-                    ),
-                    options = list(
-                      control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-                      control.inla = list(int.strategy = "eb"),
-                      verbose = TRUE
-                    )
-)
+# DIC
+fit$dic$dic
+fit.year$dic$dic
 
+# WAIC
+fit$waic$waic
+fit.year$waic$waic
 
-fit.30km <- bru(s_components.30km,
-               like(
-                 formula = s_formula,
-                 family = "binomial",
-                 Ntrials = 1,
-                 data = data
-               ),
-               options = list(
-                 control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
-                 control.inla = list(int.strategy = "eb"),
-                 verbose = TRUE
-               )
-)
+# cpo
+-mean(log(fit$cpo$cpo))
+-mean(log(fit.year$cpo$cpo))
 
-fit.10km$dic$dic
-fit.30km$dic$dic
-fit.10km.year$dic$dic
-fit.30km.year$dic$dic
-
-
-fit.10km$mode$mode.status # a 0 or low value indicates "convergence"
-fit.30km$mode$mode.status # a 0 or low value indicates "convergence"
-fit.10km.year$mode$mode.status # a 0 or low value indicates "convergence"
-fit.30km.year$mode$mode.status # a 0 or low value indicates "convergence"
-
-
+# checking convergence
+fit$mode$mode.status
+fit.year$mode$mode.status
 
 
 
