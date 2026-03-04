@@ -661,7 +661,7 @@ effects_df <- posteriors_df %>%
                                                          "ppt_10km" = "PPT.")),
                           levels = c("Intercept","Nit.","Agr.","Urb.","PPT.","Nit. X Agr.","Nit. X Urb.","Nit. X PPT.","Agr. X Urb.","Agr. X PPT.","Urb. X PPT.","Nit. X Agr. X Urb.","Nit. X Agr. X PPT.","Nit. X Urb. X PPT.","Agr. X Urb. X PPT.","Nit. X Agr. X Urb. X PPT.")),
          spp_f = factor(case_when(spp_label == "ELVI" ~ "E. virginicus", spp_label == "AGPE" ~ "A. perennans", spp_label == "AGHY" ~ "A. hyemalis"),
-                        levels = (c("A. hyemalis", "A. perennans", "E. virginicus"))))
+                        levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus"))))
 
 
 # generating the same for the normal data model
@@ -698,41 +698,38 @@ effects_normal_df <- posteriors_normal_df %>%
                                                          "ppt_10km" = "PPT.")),
                           levels = c("Intercept","Nit.","Agr.","Urb.","PPT.","Nit. X Agr.","Nit. X Urb.","Nit. X PPT.","Agr. X Urb.","Agr. X PPT.","Urb. X PPT.","Nit. X Agr. X Urb.","Nit. X Agr. X PPT.","Nit. X Urb. X PPT.","Agr. X Urb. X PPT.","Nit. X Agr. X Urb. X PPT.")),
          spp_f = factor(case_when(spp_label == "ELVI" ~ "E. virginicus", spp_label == "AGPE" ~ "A. perennans", spp_label == "AGHY" ~ "A. hyemalis"),
-                        levels = (c("A. hyemalis", "A. perennans", "E. virginicus"))))
+                        levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus"))))
 
 
 
 
 
-effects <- bind_rows(effects_df, effects_normal_df) 
 
-effects_summary <- effects %>%
-  group_by(param, param_label, spp_label, spp_f, param_f, data) %>%
-  summarize(mean = mean(value),
-            lwr = quantile(value, .025),
-            upr = quantile(value, .975),
-            prob_pos = sum(value>0)/1000,
-            prob_neg = 1-prob_pos)
+effects <- bind_rows(effects_df, effects_normal_df) %>% 
+  filter(spp_label != "AGPE")
 
 
 data_colors <- c("#2c7fb8", "#808080")
 
 
-posterior_hist <- ggplot(effects_summary)+
-  coord_flip()+
-  geom_hline(aes(yintercept = 0), lwd = 1)+
-  geom_point(aes(y = mean, x = param_f, group = data, color = data), position = position_dodge(width = .4), size =2)+
-  geom_linerange(aes(ymin = lwr, ymax = upr, x = param_f, group = data, color = data),  position = position_dodge(width = 0.4))+
-  ggh4x::facet_grid2( param_f ~ spp_f, remove_labels = "y", scales = "free", independent = "x")+
-  labs(x = "Parameter", y = "Posterior Est.")+
-  # guides(fill = data)+
+
+posterior_hist <- ggplot(effects)+
+  stat_halfeye(aes(x = value, y = spp_f, fill  = data, group = data), breaks = 50, normalize = "panels", alpha = .6)+
+  
+  # stat_halfeye(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
+  # stat_histinterval(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, alpha = .6)+
+  # geom_point(data = posteriors_summary, aes(x = mean, y = spp_label, color = spp_label))+
+  # geom_linerange(data = posteriors_summary, aes(xmin = lwr, xmax = upr, y = spp_label, color = spp_label))+
+  
+  geom_vline(xintercept = 0)+
+  facet_wrap(~param_f, scales = "free_x", ncol = 4)+
+  labs(x = "Posterior Est.", y = "Species")+
+  # guides(fill = "none")+
   scale_color_manual(values = data_colors)+
   scale_fill_manual(values = data_colors)+
-  scale_y_continuous(labels = scales::label_scientific(), guide = guide_axis(check.overlap = TRUE))+
-  theme_bw() + theme(axis.text.x = element_text(size = rel(.8)),
-                     strip.background = element_blank(),
-                     strip.text.y = element_blank(),
-                     strip.text.x = element_text(face = "italic"))
+  scale_x_continuous(labels = scales::label_scientific(), guide = guide_axis(check.overlap = TRUE))+
+  theme_bw() + theme(axis.text.y = element_text(face = "italic"),
+                     axis.text.x = element_text(size = rel(.8)))
 
 # posterior_hist
 ggsave(posterior_hist, filename = "Plots/year_specific_posterior_hist.png", width = 9, height = 9)
@@ -764,7 +761,13 @@ posterior_hist <- ggplot(effects_AGPE)+
 
 ggsave(posterior_hist, filename = "Plots/year_specific_posterior_hist_AGPE.png", width = 11, height = 6)
 
-
+effects_summary <- effects %>%
+  group_by(param, param_label, spp_label, spp_f, param_f, data) %>%
+  summarize(mean = mean(value),
+            lwr = quantile(value, .025),
+            upr = quantile(value, .975),
+            prob_pos = sum(value>0)/1000,
+            prob_neg = 1-prob_pos)
 # 
 
 
