@@ -655,14 +655,28 @@ validation.pred <- predict(
   n.samples = 500) 
 
 
+validation.pred.year <- predict(
+  fit.year,
+  newdata = data,
+  formula = ~ invlogit(fixed + scorer + collector + space_int),
+  n.samples = 500) 
+
+
 rocobj <- pROC::roc(data$Endo_status_liberal, validation.pred$mean)
+rocobj.year <- pROC::roc(data$Endo_status_liberal, validation.pred.year$mean)
 
 ROC_training_plot <- ggroc(rocobj) 
 ggsave(ROC_training_plot, filename = "Plots/ROC_training_plot.png", width = 4, height = 4)
 
+ROC_year_training_plot <- ggroc(rocobj.year) 
+ggsave(ROC_year_training_plot, filename = "Plots/ROC_year_training_plot.png", width = 4, height = 4)
+
 # AUC values
 rocobj$auc
 # 0.7983
+
+rocobj.year$auc
+#0.7871
 
 
 # generating posterior samples of each parameter
@@ -672,31 +686,58 @@ post.pred <- generate(
   formula = ~ invlogit(fixed + scorer + collector + space_int),
   n.samples = 250) 
 
+post.pred.year <- generate(
+  fit.year,
+  newdata = data,
+  formula = ~ invlogit(fixed + scorer + collector + space_int),
+  n.samples = 250) 
+
 posterior_samples <- bind_cols(data, post.pred) %>% 
+  select(...109:...358) %>% st_drop_geometry %>% as.matrix()
+
+posterior_samples.year <- bind_cols(data, post.pred.year) %>% 
   select(...109:...358) %>% st_drop_geometry %>% as.matrix()
 
 # simulating datasets from the posterior samples
 n_post_draws <- 250
 y_sim <- matrix(NA,n_post_draws,length(data$Endo_status_liberal))
+y_sim.year <- matrix(NA,n_post_draws,length(data$Endo_status_liberal))
 
 for(i in 1:n_post_draws){
   y_sim[i,] <- rbinom(n = length(data$Endo_status_liberal), size = 1, prob = posterior_samples[,i])
+  y_sim.year[i,] <- rbinom(n = length(data$Endo_status_liberal), size = 1, prob = posterior_samples.year[,i])
 }
 
 # saveRDS(y_sim, file = "y_sim.rds")
 # y_sim <- readRDS("y_sim.rds")
 y_sim_df <- t(y_sim)
-colnames(y_sim_df) <- paste("iter", 1:n_post_draws)
+y_sim.year_df <- t(y_sim.year)
+
+colnames(y_sim_df) <- colnames(y_sim.year_df) <- paste("iter", 1:n_post_draws)
+
 y_sim_df <- as_tibble(y_sim_df, .name_repair = "minimal") %>% 
+  pivot_longer(cols = everything())
+
+y_sim.year_df <- as_tibble(y_sim.year_df, .name_repair = "minimal") %>% 
   pivot_longer(cols = everything())
 
 overlay_plot <- ggplot(data)+
   geom_line(data = y_sim_df, aes(x = value, group = name), stat="density", color = "red", alpha = .3) +
   geom_line(aes(x = Endo_status_liberal), stat="density") + 
-  labs(x = "Endophyte Status", y = "Density")+
+  labs(title = "Static Covariate Model", x = "Endophyte Status", y = "Density")+
   theme_minimal()
 overlay_plot
-ggsave(overlay_plot, filename = "Plots/overlay_plot.png", width = 4, height = 4)
+
+year_overlay_plot <- ggplot(data)+
+  geom_line(data = y_sim.year_df, aes(x = value, group = name), stat="density", color = "red", alpha = .3) +
+  geom_line(aes(x = Endo_status_liberal), stat="density") + 
+  labs(title = "Year X Covariate Model", x = "Endophyte Status", y = "Density")+
+  theme_minimal()
+year_overlay_plot
+
+PPC_plot <- overlay_plot/year_overlay_plot
+
+ggsave(PPC_plot, filename = "Plots/PPC_plot.png", width = 4, height = 4)
 
 
 
