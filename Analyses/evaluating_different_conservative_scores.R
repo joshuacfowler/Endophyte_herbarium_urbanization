@@ -321,20 +321,17 @@ pc_prec <- list(prior = "pcprec", param = c(1, 0.1))
 # comparing different levels of interactions
 
 
-
-
-s_components <-  ~ 0 +  fixed(main = ~ 0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km)^4, model = "fixed")+
+s_components <-  ~ 0 +  fixed(main = ~ 0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km + tmean_10km), model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
 
 
 
-s_components.year <-  ~ 0 +  fixed(main = ~ 0 + (Spp_code)/(mean_TIN_10km + PercentAg + PercentUrban + year + ppt_10km)^2, model = "fixed")+
+s_components.year <-  ~ 0 +  fixed(main = ~ 0 + (Spp_code)/(mean_TIN_10km*year + PercentAg*year + PercentUrban*year + ppt_10km  + tmean_10km), model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
   space_int(coords, model = spde)
-
 
 
 
@@ -622,8 +619,9 @@ effects.lib_df <- posteriors.lib_df %>%
                                                          "PercentAg" = "Agr.",
                                                          "PercentUrban" = "Urb.",
                                                          "mean_TIN_10km" = "Nit.",
-                                                         "ppt_10km" = "PPT.")),
-                          levels = c("Intercept","Nit.","Agr.","Urb.","PPT.","Nit. X Agr.","Nit. X Urb.","Nit. X PPT.","Agr. X Urb.","Agr. X PPT.","Urb. X PPT.","Nit. X Agr. X Urb.","Nit. X Agr. X PPT.","Nit. X Urb. X PPT.","Agr. X Urb. X PPT.","Nit. X Agr. X Urb. X PPT.")),
+                                                         "ppt_10km" = "PPT.",
+                                                         "tmean_10km" = "Temp.")),
+                          levels = c("Intercept","Nit.","Agr.","Urb.","PPT.","Temp.")),
          spp_f = factor(case_when(spp_label == "ELVI" ~ "E. virginicus", spp_label == "AGPE" ~ "A. perennans", spp_label == "AGHY" ~ "A. hyemalis"),
                         levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus"))))
 
@@ -639,8 +637,9 @@ effects.con_df <- posteriors.con_df %>%
                                                          "PercentAg" = "Agr.",
                                                          "PercentUrban" = "Urb.",
                                                          "mean_TIN_10km" = "Nit.",
-                                                         "ppt_10km" = "PPT.")),
-                          levels = c("Intercept","Nit.","Agr.","Urb.","PPT.","Nit. X Agr.","Nit. X Urb.","Nit. X PPT.","Agr. X Urb.","Agr. X PPT.","Urb. X PPT.","Nit. X Agr. X Urb.","Nit. X Agr. X PPT.","Nit. X Urb. X PPT.","Agr. X Urb. X PPT.","Nit. X Agr. X Urb. X PPT.")),
+                                                         "ppt_10km" = "PPT.",
+                                                         "tmean_10km" = "Temp.")),
+                          levels = c("Intercept","Nit.","Agr.","Urb.","PPT.","Temp.")),
          spp_f = factor(case_when(spp_label == "ELVI" ~ "E. virginicus", spp_label == "AGPE" ~ "A. perennans", spp_label == "AGHY" ~ "A. hyemalis"),
                         levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus"))))
 
@@ -660,7 +659,7 @@ posterior_hist <- ggplot(filter(effects_df))+
   # geom_linerange(data = posteriors_summary, aes(xmin = lwr, xmax = upr, y = spp_label, color = spp_label))+
   
   geom_vline(xintercept = 0)+
-  facet_wrap(~param_f, scales = "free_x", ncol = 4)+
+  facet_wrap(~param_f, scales = "free_x", nrow = 1)+
   labs(x = "Posterior Est.", y = "Species", fill = "Score Type")+
   # guides(fill = "none")+
   scale_color_manual(values = lib_con_colors)+
@@ -671,7 +670,7 @@ posterior_hist <- ggplot(filter(effects_df))+
 
 # posterior_hist
 # posterior_hist <- tag_facet2(posterior_hist)
-ggsave(posterior_hist, filename = "Plots/lib_con_comparison.png", width = 9, height = 9)
+ggsave(posterior_hist, filename = "Plots/lib_con_comparison.png", width = 10, height = 4)
 
 
 
@@ -692,7 +691,13 @@ ggsave(posterior_hist, filename = "Plots/lib_con_comparison.png", width = 9, hei
 ##########  Plotting the posteriors from the model with year effect ###############
 ################################################################################################################################
 param_names.lib <- fit.lib.year$summary.random$fixed$ID
+param_names.lib <- gsub(":year:PercentAg", ":PercentAg:year", param_names.lib)
+param_names.lib <- gsub(":year:PercentUrban", ":PercentUrban:year", param_names.lib)
+
 param_names.con <- fit.con.year$summary.random$fixed$ID
+param_names.con <- gsub(":year:PercentAg", ":PercentAg:year", param_names.con)
+param_names.con <- gsub(":year:PercentUrban", ":PercentUrban:year", param_names.con)
+
 
 n_draws <- 1000
 
@@ -734,8 +739,9 @@ effects.lib_df <- posteriors.lib_df %>%
                                                          "PercentAg" = "Agr.",
                                                          "PercentUrban" = "Urb.",
                                                          "mean_TIN_10km" = "Nit.",
-                                                         "ppt_10km" = "Ppt.")),
-                          levels = c("Intercept"  ,"Nit.","Agr.","Urb.","Year","Ppt.","Nit. X Agr.","Nit. X Urb.", "Nit. X Year","Nit. X Ppt.","Agr. X Urb.","Agr. X Year","Agr. X Ppt.","Urb. X Year","Urb. X Ppt.","Year X Ppt.","Nit. X Agr. X Urb.","Nit. X Agr. X Year","Nit. X Agr. X Ppt.","Nit. X Urb. X Year","Nit. X Urb. X Ppt.","Nit. X Year X Ppt.","Agr. X Urb. X Year","Agr. X Urb. X Ppt.","Agr. X Year X Ppt.","Urb. X Year X Ppt.","Nit. X Agr. X Urb. X Year","Nit. X Agr. X Urb. X Ppt.","Nit. X Agr. X Year X Ppt." ,"Nit. X Urb. X Year X Ppt.","Agr. X Urb. X Year X Ppt." )),
+                                                         "ppt_10km" = "Ppt.",
+                                                         "tmean_10km" = "Temp.")),
+                          levels = c("Intercept"  ,"Nit.","Agr.","Urb.","Ppt.", "Temp.", "Year", "Agr. X Year", "Urb. X Year", "Nit. X Year")),
          spp_f = factor(case_when(spp_label == "ELVI" ~ "E. virginicus", spp_label == "AGPE" ~ "A. perennans", spp_label == "AGHY" ~ "A. hyemalis"),
                         levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus"))))
 
@@ -751,8 +757,9 @@ effects.con_df <- posteriors.con_df %>%
                                                          "PercentAg" = "Agr.",
                                                          "PercentUrban" = "Urb.",
                                                          "mean_TIN_10km" = "Nit.",
-                                                         "ppt_10km" = "Ppt.")),
-                          levels = c("Intercept"  ,"Nit.","Agr.","Urb.","Year","Ppt.","Nit. X Agr.","Nit. X Urb.", "Nit. X Year","Nit. X Ppt.","Agr. X Urb.","Agr. X Year","Agr. X Ppt.","Urb. X Year","Urb. X Ppt.","Year X Ppt.","Nit. X Agr. X Urb.","Nit. X Agr. X Year","Nit. X Agr. X Ppt.","Nit. X Urb. X Year","Nit. X Urb. X Ppt.","Nit. X Year X Ppt.","Agr. X Urb. X Year","Agr. X Urb. X Ppt.","Agr. X Year X Ppt.","Urb. X Year X Ppt.","Nit. X Agr. X Urb. X Year","Nit. X Agr. X Urb. X Ppt.","Nit. X Agr. X Year X Ppt." ,"Nit. X Urb. X Year X Ppt.","Agr. X Urb. X Year X Ppt." )),
+                                                         "ppt_10km" = "Ppt.",
+                                                         "tmean_10km" = "Temp.")),
+                          levels = c("Intercept"  ,"Nit.","Agr.","Urb.","Ppt.", "Temp.", "Year", "Agr. X Year", "Urb. X Year", "Nit. X Year")),
          spp_f = factor(case_when(spp_label == "ELVI" ~ "E. virginicus", spp_label == "AGPE" ~ "A. perennans", spp_label == "AGHY" ~ "A. hyemalis"),
                         levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus"))))
 
@@ -770,7 +777,7 @@ posterior_hist <- ggplot(filter(effects_df))+
   # geom_linerange(data = posteriors_summary, aes(xmin = lwr, xmax = upr, y = spp_label, color = spp_label))+
   
   geom_vline(xintercept = 0)+
-  facet_wrap(~param_f, scales = "free_x", ncol = 4)+
+  facet_wrap(~param_f, scales = "free_x", nrow = 2)+
   labs(x = "Posterior Est.", y = "Species", fill = "Score Type")+
   # guides(fill = "none")+
   scale_color_manual(values = lib_con_colors)+
@@ -781,7 +788,7 @@ posterior_hist <- ggplot(filter(effects_df))+
 
 
 # posterior_hist
-ggsave(posterior_hist, filename = "Plots/lib_con_yearmodel.png", width = 9, height = 11)
+ggsave(posterior_hist, filename = "Plots/lib_con_yearmodel.png", width = 10, height = 5)
 
 
 
