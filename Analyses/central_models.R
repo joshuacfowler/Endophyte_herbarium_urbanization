@@ -31,7 +31,6 @@ library(ggmap)
 library(pROC)
 library(ggplot2)
 library(maps)
-library(alphahull)
 
 invlogit<-function(x){exp(x)/(1+exp(x))}
 species_colors <- c("#1b9e77","#d95f02","#7570b3")
@@ -229,6 +228,21 @@ data <- endo_herb %>%
          ppt_10km = ppt_10km - data_summary$ppt_10km) %>%  
   mutate(Spp_index = as.numeric(as.factor(Spp_code))) %>% 
   filter(!is.na(ppt_10km))
+# spp_count <- data %>% 
+#   filter(score_number == 1) %>% 
+#   group_by(species) %>% summarize(n())
+#  county_count <- data %>% 
+#    filter(score_number == 1, is.na(Municipality) & !is.na(County)) %>% 
+#    summarize(n())
+# city_count <- data %>% 
+#    filter(score_number == 1, !is.na(Municipality) & !is.na(County)) %>% 
+#    summarize(n())
+
+# endo_status_summary <- data %>%
+#   group_by(species) %>% 
+#   summarize(mean = mean(Endo_status_liberal),
+#             sd = sd(Endo_status_liberal)^2)
+ 
 
 # Build the spatial mesh from the coords for each species and a boundary around each species predicted distribution (eventually from Jacob's work ev)
 coords <- cbind(data$easting, data$northing)
@@ -621,6 +635,7 @@ ggsave(posterior_hist, filename = "Plots/posterior_hist.png", width = 8, height 
 effects_summary <- effects_df %>% 
   group_by(param, param_label, spp_label) %>% 
   summarize(mean = mean(value), 
+            median = median(value), 
             lwr = quantile(value, .025),
             upr = quantile(value, .975),
             prob_pos = sum(value>0)/1000,
@@ -1049,9 +1064,9 @@ avg_change <- tibble(preddata, as_tibble(year.pred)) %>%
   mutate(treatment = case_when(PercentAg <0 ~ "Low Agr.", PercentAg>0 ~ "High Agr.",
                                PercentUrban <0 ~ "Low Urb.", PercentUrban>0 ~ "High Urb.",
                                mean_TIN_10km<0 ~ "Low Nit.", mean_TIN_10km>0 ~ "High Nit.", TRUE ~ "Avg. Covariates"),
-         treatment_group = case_when(grepl("Agr.", treatment) ~ "Agr. Land Cover",
+         treatment_group = factor(case_when(grepl("Agr.", treatment) ~ "Agr. Land Cover",
                                      grepl("Urb.", treatment) ~ "Urb. Land Cover",
-                                     grepl("Nit.", treatment) ~ "Nit. Deposition"),
+                                     grepl("Nit.", treatment) ~ "Nit. Deposition"), levels = c("Agr. Land Cover", "Urb. Land Cover", "Nit. Deposition")),
          treatment_label = case_when(grepl("Low", treatment) ~ "Low",
                                      grepl("High", treatment) ~ "High"),
          treatment_label = factor(treatment_label, level = c("Low", "High"))) %>% 
@@ -1064,6 +1079,7 @@ avg_change <- tibble(preddata, as_tibble(year.pred)) %>%
   mutate(diff = (post.max_year - post.min_year)*100) %>% 
   group_by(Spp_code, treatment, treatment_group,treatment_label, species) %>% 
   dplyr::summarise(diff_mean = mean(diff),
+                   diff_median = median(diff),
                    lwr = quantile(diff, .025),
                    upr = quantile(diff, .975),
                    prob_pos = sum(diff>0)/500) %>% 
@@ -1073,9 +1089,9 @@ avg_posteriors <- tibble(preddata, as_tibble(year.pred)) %>%
   mutate(treatment = case_when(PercentAg <0 ~ "Low Agr.", PercentAg>0 ~ "High Agr.",
                                PercentUrban <0 ~ "Low Urb.", PercentUrban>0 ~ "High Urb.",
                                mean_TIN_10km<0 ~ "Low Nit.", mean_TIN_10km>0 ~ "High Nit.", TRUE ~ "Avg. Covariates"),
-         treatment_group = case_when(grepl("Agr.", treatment) ~ "Agr. Land Cover",
+         treatment_group = factor(case_when(grepl("Agr.", treatment) ~ "Agr. Land Cover",
                                      grepl("Urb.", treatment) ~ "Urb. Land Cover",
-                                     grepl("Nit.", treatment) ~ "Nit. Deposition"),
+                                     grepl("Nit.", treatment) ~ "Nit. Deposition"), levels = c("Agr. Land Cover", "Urb. Land Cover", "Nit. Deposition")),
          treatment_label = case_when(grepl("Low", treatment) ~ "Low",
                                      grepl("High", treatment) ~ "High"),
          treatment_label = factor(treatment_label, level = c("Low", "High"))) %>% 
@@ -1193,6 +1209,7 @@ ggsave(posterior_hist, filename = "Plots/posterior_hist_yearmodel.png", width = 
 effects_summary <- effects_df %>% 
   group_by(param, param_label, spp_label) %>% 
   summarize(mean = mean(value), 
+            median = median(value),
             lwr = quantile(value, .025),
             upr = quantile(value, .975),
             prob_pos = sum(value>0)/1000,
@@ -1299,7 +1316,12 @@ ag_urb.year.pred_df <- tibble(ag_urb.preddata, as_tibble(ag_urb.year.pred)) %>%
   mutate(diff = (post.max_year - post.min_year)) %>% 
   group_by(Spp_code, PercentAg, PercentUrban, mean_TIN_10km, collector_index, scorer_index, species) %>% 
   dplyr::summarise(diff_mean = mean(diff),
-                   diff_prob = max((sum(diff<0)/500),(sum(diff>0)/500))) %>% 
+                   diff_median = median(diff),
+                   diff_lwr = quantile(diff, probs = 0.025),
+                   diff_upr = quantile(diff, probs = 0.975),
+                   diff_prob = max((sum(diff<0)/500),(sum(diff>0)/500)),
+                   start_mean = mean(post.min_year),
+                   end_mean = mean(post.max_year))%>% 
   mutate(dataset = "ag_urb")
 
 
@@ -1390,7 +1412,12 @@ ag_nit.year.pred_df <- tibble(ag_nit.preddata, as_tibble(ag_nit.year.pred)) %>%
   mutate(diff = (post.max_year - post.min_year)) %>% 
   group_by(Spp_code, PercentAg, PercentUrban, mean_TIN_10km, collector_index, scorer_index, species) %>% 
   dplyr::summarise(diff_mean = mean(diff),
-                   diff_prob = max((sum(diff<0)/500),(sum(diff>0)/500))) %>% 
+                   diff_median = median(diff),
+                   diff_lwr = quantile(diff, probs = 0.025),
+                   diff_upr = quantile(diff, probs = 0.975),
+                   diff_prob = max((sum(diff<0)/500),(sum(diff>0)/500)),
+                   start_mean = mean(post.min_year),
+                   end_mean = mean(post.max_year))%>% 
   mutate(dataset = "ag_nit")
 
 
@@ -1482,6 +1509,9 @@ urb_nit.year.pred_df <- tibble(urb_nit.preddata, as_tibble(urb_nit.year.pred)) %
   mutate(diff = (post.max_year - post.min_year)) %>% 
   group_by(Spp_code, PercentAg, PercentUrban, mean_TIN_10km, collector_index, scorer_index, species) %>% 
   dplyr::summarise(diff_mean = mean(diff),
+                   diff_median = median(diff),
+                   diff_lwr = quantile(diff, probs = 0.025),
+                   diff_upr = quantile(diff, probs = 0.975),
                    diff_prob = max((sum(diff<0)/500),(sum(diff>0)/500)),
                    start_mean = mean(post.min_year),
                    end_mean = mean(post.max_year))%>% 
@@ -1659,10 +1689,13 @@ ggsave(Fig3, filename = "Plots/Figure_3_main.png", width = 12, height = 6)
 
 avg_change_pixel <- year.pred_df %>% 
   group_by(Spp_code) %>% 
-  dplyr::summarize(median = median(diff_mean)*100,
-                   mean = mean(diff_mean), 
-                   max = max(diff_mean), 
-                   min = min(diff_mean))
+  dplyr::summarize(median = mean(diff_median)*100,
+                   mean = mean(diff_mean)*100, 
+                   lwr = mean(diff_lwr)*100, 
+                   upr = mean(diff_upr)*100,
+                   min = min(diff_mean)*100,
+                   max = max(diff_mean)*100,
+                   avg_prob = mean(diff_prob))
 
 
 
