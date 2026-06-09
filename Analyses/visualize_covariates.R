@@ -19,7 +19,15 @@ library(maps)
 library(ggplot2)
 
 
-
+tag_facet2 <- function(p, open = "(", close = ")", tag_pool = letters, x = -Inf, y = Inf, 
+                       hjust = -0.5, vjust = 1.5, fontface = 2, family = "", ...) {
+  
+  gb <- ggplot_build(p)
+  lay <- gb$layout$layout
+  tags <- cbind(lay, label = paste0(open, tag_pool[lay$PANEL], close), x = x, y = y)
+  p + geom_text(data = tags, aes_string(x = "x", y = "y", label = "label"), ..., hjust = hjust, 
+                vjust = vjust, fontface = fontface, family = family, inherit.aes = FALSE)
+}
 
 ################################################################################
 ############ Read in the herbarium dataset ############################### 
@@ -177,7 +185,7 @@ endo_herb <- left_join(endo_herb_sf, climate, by = c("lon", "lat", "year")) %>%
 
 length(unique(endo_herb$Sample_id))
 
-view(endo_herb %>% filter(score_number == 1) %>%  group_by(Spp_code) %>% summarize(n()))
+# view(endo_herb %>% filter(score_number == 1) %>%  group_by(Spp_code) %>% summarize(n()))
 ####### calculate georeferencing bounding box widths #####
 
 east_west_bb <- endo_herb %>% 
@@ -208,10 +216,36 @@ counties <- map_data("county")
 ########################################################################################
 ############################## Temporal distribution figure#############################
 ########################################################################################
+# ggplot(data = endo_herb, aes(x = year)) +
+#   geom_histogram(binwidth = 5, fill = "lightblue", col = "white")+
+#   labs(x = "Collection Year", y = "Number of Herbarium Samples")
 
-ggplot(data = endo_herb, aes(x = year)) +
-  geom_histogram(binwidth = 5, fill = "lightblue", col = "white")+
-  labs(x = "Collection Year", y = "Number of Herbarium Samples")
+
+
+# histogram of collection years
+label <- tibble(label = c("Climate Data",
+                          "Nit. Dep. Data",
+                          "Land Use Data"),
+                x = c(1920,2010,2005),
+                y = c(20,30,40),
+                species = "A. perennans")
+fig1_histogram <- ggplot(endo_herb)+
+  geom_rect(xmin = 1895, xmax = 2019, ymin = 0, ymax =25,  fill = "coral")+
+  geom_errorbar(data = label, aes(xmin = 1895, xmax = 2019, y = 20), orientation =  "y", lineend = "square",  width = 3)+
+  geom_rect(xmin = 1999, xmax = 2020, ymin = 25, ymax =35, alpha = .008, fill = "#BF00A0")+
+  geom_errorbar(data = label, aes(xmin = 1999, xmax = 2020, y = 30), orientation =  "y", lineend = "square",  width = 3)+
+  geom_rect(xmin = 1985, xmax = 2019, ymin = 35, ymax =45, alpha = .008, fill = "#021475")+
+  geom_errorbar(data = label, aes(xmin = 1985, xmax = 2019, y = 40), orientation =  "y", lineend = "square",  width = 3)+
+  
+  geom_label(data = label, aes(x = x, y = y, label = label), size = 2, fontface = "bold")+
+  geom_histogram(aes(x = year), color = "white", fill = "black", bins=60) + 
+  facet_wrap(~species, ncol = 1, scales = "free_y") + 
+  labs(y = "# of Specimens", x = "Year")+
+  theme_minimal() + 
+  theme(strip.text = element_text(face = "italic"))
+tag_fig1_histogram <- tag_facet2(fig1_histogram, open = "", close = "", tag_pool = c("D","E", "F"), fontface = 1)
+tag_fig1_histogram
+ggsave(tag_fig1_histogram, filename = "Plots/fig1_histogram.png", width = 4, height = 8)
 
 
 #########################################################################################
