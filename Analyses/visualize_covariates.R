@@ -243,7 +243,7 @@ fig1_histogram <- ggplot(endo_herb)+
   labs(y = "# of Specimens", x = "Year")+
   theme_minimal() + 
   theme(strip.text = element_text(face = "italic"))
-tag_fig1_histogram <- tag_facet2(fig1_histogram, open = "", close = "", tag_pool = c("D","E", "F"), fontface = 1)
+tag_fig1_histogram <- tag_facet2(fig1_histogram, open = "", close = "", tag_pool = c("A","B", "C"), fontface = 1)
 tag_fig1_histogram
 ggsave(tag_fig1_histogram, filename = "Plots/fig1_histogram.png", width = 4, height = 8)
 
