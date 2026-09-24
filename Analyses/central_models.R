@@ -1105,20 +1105,27 @@ avg_change <- tibble(preddata, as_tibble(year.pred)) %>%
   mutate(treatment = case_when(PercentAg <0 ~ "Low Agr.", PercentAg>0 ~ "High Agr.",
                                PercentUrban <0 ~ "Low Urb.", PercentUrban>0 ~ "High Urb.",
                                mean_TIN_10km<0 ~ "Low Nit.", mean_TIN_10km>0 ~ "High Nit.", TRUE ~ "Avg. Covariates"),
-         treatment_group = factor(case_when(grepl("Agr.", treatment) ~ "Agr. Land Cover",
-                                     grepl("Urb.", treatment) ~ "Urb. Land Cover",
-                                     grepl("Nit.", treatment) ~ "Nit. Deposition"), levels = c("Agr. Land Cover", "Urb. Land Cover", "Nit. Deposition")),
+         treatment_group = factor(case_when(grepl("Agr.", treatment) ~ "Agr. Land Cover (%)",
+                                            grepl("Urb.", treatment) ~ "Urb. Land Cover (%)",
+                                            grepl("Nit.", treatment) ~ "Nit. Deposition (kg N/km^2/year)"), levels = c("Agr. Land Cover (%)", "Urb. Land Cover (%)", "Nit. Deposition (kg N/km^2/year)")),
          treatment_label = case_when(grepl("Low", treatment) ~ "Low",
                                      grepl("High", treatment) ~ "High"),
-         treatment_label = factor(treatment_label, level = c("Low", "High"))) %>% 
-  # mutate(year = year + data_summary$year,
+         treatment_label = factor(treatment_label, level = c("Low", "High")),
+         treatment_x = case_when(treatment_group == "Agr. Land Cover (%)" ~ paste0(treatment_label, "\n(",round((PercentAg + data_summary$PercentAg) , digits = 1), "%)"),
+                                 treatment_group == "Urb. Land Cover (%)" ~ paste0(treatment_label, "\n(",round((PercentUrban + data_summary$PercentUrban) , digits = 1), "%)"),
+                                 treatment_group == "Nit. Deposition (kg N/km^2/year)" ~ paste0(treatment_label, "\n(",round((mean_TIN_10km + data_summary$mean_TIN_10km) , digits = 1), ")")),
+         treatment_x = factor(treatment_x, level = c("Low\n(0%)" ,  "Low\n(111.7)" ,  "High\n(95.6%)" ,  "High\n(99.1%)",  "High\n(639.1)"))) %>% 
+  #        treatment_x = factor(treatment_x, level = c(paste0("Low", " (",round((unique(PercentAg) + data_summary$PercentAg) , digits = 1), "%)"), paste0("High", " (",round((unique(PercentAg) + data_summary$PercentAg) , digits = 1), "%)"),
+  #                                                    paste0("Low", " (",round((unique(PercentUrban) + data_summary$PercentUrban) , digits = 1), "%)"), paste0("High", " (",round((unique(PercentUrban) + data_summary$PercentUrban) , digits = 1), "%)"),
+  #                                                    paste0("Low", " (",round((unique(mean_TIN_10km) + data_summary$mean_TIN_10km) , digits = 1), " kg N/km^2/year)"), paste0("High", " (",unique((mean(mean_TIN_10km) + data_summary$mean_TIN_10km) , digits = 1), " kg N/km^2/year)")))) %>% 
+  # # mutate(year = year + data_summary$year,
   #        PercentUrban = PercentUrban + data_summary$PercentUrban,
   #        PercentAg= PercentAg + data_summary$PercentAg,
   #        mean_TIN_10km= mean_TIN_10km + data_summary$mean_TIN_10km) %>% 
   pivot_longer(cols = iter1:iter500, names_to = "iteration", values_to = "posterior") %>% 
-  pivot_wider(id_cols = c(Spp_code, PercentAg, PercentUrban, mean_TIN_10km, ppt_10km, tmean_10km, treatment, treatment_group,treatment_label, collector_index, scorer_index, species, iteration), names_from = c(year_label), values_from = posterior, names_prefix = "post.") %>% 
+  pivot_wider(id_cols = c(Spp_code, PercentAg, PercentUrban, mean_TIN_10km, ppt_10km, tmean_10km, treatment, treatment_group,treatment_label, treatment_x, collector_index, scorer_index, species, iteration), names_from = c(year_label), values_from = posterior, names_prefix = "post.") %>%  
   mutate(diff = (post.max_year - post.min_year)*100) %>% 
-  group_by(Spp_code, treatment, treatment_group,treatment_label, species) %>% 
+  group_by(Spp_code, treatment, treatment_group,treatment_label, treatment_x, species) %>% 
   dplyr::summarise(diff_mean = mean(diff),
                    diff_median = median(diff),
                    lwr = quantile(diff, .025),
@@ -1130,20 +1137,24 @@ avg_posteriors <- tibble(preddata, as_tibble(year.pred)) %>%
   mutate(treatment = case_when(PercentAg <0 ~ "Low Agr.", PercentAg>0 ~ "High Agr.",
                                PercentUrban <0 ~ "Low Urb.", PercentUrban>0 ~ "High Urb.",
                                mean_TIN_10km<0 ~ "Low Nit.", mean_TIN_10km>0 ~ "High Nit.", TRUE ~ "Avg. Covariates"),
-         treatment_group = factor(case_when(grepl("Agr.", treatment) ~ "Agr. Land Cover",
-                                     grepl("Urb.", treatment) ~ "Urb. Land Cover",
-                                     grepl("Nit.", treatment) ~ "Nit. Deposition"), levels = c("Agr. Land Cover", "Urb. Land Cover", "Nit. Deposition")),
+         treatment_group = factor(case_when(grepl("Agr.", treatment) ~ "Agr. Land Cover (%)",
+                                     grepl("Urb.", treatment) ~ "Urb. Land Cover (%)",
+                                     grepl("Nit.", treatment) ~ "Nit. Deposition (kg N/km^2/year)"), levels = c("Agr. Land Cover (%)", "Urb. Land Cover (%)", "Nit. Deposition (kg N/km^2/year)")),
          treatment_label = case_when(grepl("Low", treatment) ~ "Low",
                                      grepl("High", treatment) ~ "High"),
-         treatment_label = factor(treatment_label, level = c("Low", "High"))) %>% 
+         treatment_label = factor(treatment_label, level = c("Low", "High")),
+         treatment_x = case_when(treatment_group == "Agr. Land Cover (%)" ~ paste0(treatment_label, "\n(",round((PercentAg + data_summary$PercentAg) , digits = 1), "%)"),
+                                 treatment_group == "Urb. Land Cover (%)" ~ paste0(treatment_label, "\n(",round((PercentUrban + data_summary$PercentUrban) , digits = 1), "%)"),
+                                 treatment_group == "Nit. Deposition (kg N/km^2/year)" ~ paste0(treatment_label, "\n(",round((mean_TIN_10km + data_summary$mean_TIN_10km) , digits = 1), ")")),
+         treatment_x = factor(treatment_x, level = c("Low\n(0%)" ,  "Low\n(111.7)" ,  "High\n(95.6%)" ,  "High\n(99.1%)",  "High\n(639.1)"))) %>% 
   # mutate(year = year + data_summary$year,
   #        PercentUrban = PercentUrban + data_summary$PercentUrban,
   #        PercentAg= PercentAg + data_summary$PercentAg,
   #        mean_TIN_10km= mean_TIN_10km + data_summary$mean_TIN_10km) %>% 
   pivot_longer(cols = iter1:iter500, names_to = "iteration", values_to = "posterior") %>% 
-  pivot_wider(id_cols = c(Spp_code, PercentAg, PercentUrban, mean_TIN_10km, ppt_10km, tmean_10km, treatment, treatment_group, treatment_label, collector_index, scorer_index, species, iteration), names_from = c(year_label), values_from = posterior, names_prefix = "post.") %>% 
+  pivot_wider(id_cols = c(Spp_code, PercentAg, PercentUrban, mean_TIN_10km, ppt_10km, tmean_10km, treatment, treatment_group, treatment_label, treatment_x, collector_index, scorer_index, species, iteration), names_from = c(year_label), values_from = posterior, names_prefix = "post.") %>% 
   mutate(diff = (post.max_year - post.min_year)*100) %>% 
-  group_by(Spp_code, treatment, treatment_group, treatment_label, species) %>% 
+  group_by(Spp_code, treatment, treatment_group, treatment_label, treatment_x, species) %>% 
   filter(treatment != "Avg. Covariates") %>% 
   sample_n(size = 100)
   
@@ -1159,9 +1170,9 @@ tag_facet2 <- function(p, open = "(", close = ")", tag_pool = letters, x = -Inf,
 # colors <- c("#B38600", "#021475", "#BF00A0")
 simple_trend_plot <- ggplot(avg_change)+
   geom_hline(yintercept = 0)+
-  geom_jitter(data = avg_posteriors, aes(y = diff, x = (treatment_label), fill = diff), width = .25, height = 0, color = "black",shape = 21,alpha = .7)+
-  geom_linerange(aes(ymin = lwr, ymax = upr, x = (treatment_label), ), color = "black", lwd = 1)+
-  geom_point(aes(y = diff_mean, x = (treatment_label), fill = diff_mean), size = 3, color = "black",shape = 21) + 
+  geom_jitter(data = avg_posteriors, aes(y = diff, x = factor(treatment_x, levels = ), fill = diff), width = .25, height = 0, color = "black",shape = 21,alpha = .7)+
+  geom_linerange(aes(ymin = lwr, ymax = upr, x = (treatment_x), ), color = "black", lwd = 1)+
+  geom_point(aes(y = diff_mean, x = (treatment_x), fill = diff_mean), size = 3, color = "black",shape = 21) + 
   # scale_color_distiller(palette = "RdYlBu", direction = -1)+
   scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-99,99))+
   facet_grid(species ~ treatment_group, scales = "free")+
@@ -1169,11 +1180,11 @@ simple_trend_plot <- ggplot(avg_change)+
   labs( x= "", y= "Change in % Prevalence / Century")+
   theme_bw()+
   theme(strip.background = element_blank(), 
-        strip.text = element_text( size = rel(1.1)), strip.text.y.right = element_text(face = "italic", angle = 0),
+        strip.text = element_text( size = rel(1)), strip.text.y.right = element_text(face = "italic", angle = 0),
         plot.margin = unit(c(0,.1,.1,.1), "line"))
 simple_trend_plot
 tagged_simple <- tag_facet2(simple_trend_plot)
-ggsave(tagged_simple, filename = "Plots/temporal_trend_plot.png", width = 7, height =6)  
+ggsave(tagged_simple, filename = "Plots/temporal_trend_plot.png", width = 8.5, height =7)  
 
 ################################################################################################################################
 ##########  Plotting the posteriors from the model with year effect ###############

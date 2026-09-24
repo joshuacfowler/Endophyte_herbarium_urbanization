@@ -416,64 +416,81 @@ ggsave(vif_plot, filename = "Plots/vif_plot.png", width = 4, height = 4)
 
 # now plotting "pairs" plots between covariates
 
+m_m_m <- endo_herb %>% 
+  st_drop_geometry() %>% 
+  group_by(Spp_code) %>% 
+  summarize(across(.cols = c(PercentAg, PercentUrban, mean_TIN_10km, tmean_10km, ppt_10km), 
+                   .fns = list(avg = \(x) mean(x, na.rm = T),
+                               min = \(x) min(x, na.rm = T),
+                               max = \(x) max(x, na.rm = T)),
+                   .names = "{.col}-{.fn}")) %>% 
+  pivot_longer(cols = -Spp_code,
+               names_to = c(".value", "metric"),
+               names_sep = "-")
+m <- m_m_m %>% filter(metric == "avg")
+
 ag_urb <- ggplot(endo_herb)+
-  geom_point(aes(x = PercentAg, y = PercentUrban), alpha = .2)+
+  geom_point(aes(x = PercentAg, y = PercentUrban, color = Spp_code), alpha = .2)+
+  # geom_point(data = m, aes(x = PercentAg, y = PercentUrban, fill = Spp_code), size = 3, shape = 21)+
   labs(x = "Agr. Cover (%)", y = "Urban Cover (%)")+
-  theme_classic() + theme(panel.grid.major = element_line(color = "gray"))
+  theme_classic() + theme(panel.grid.major = element_line(color = "gray"), legend.position = "none")
 ag_nit <- ggplot(endo_herb)+
-  geom_point(aes(x = PercentAg, y = mean_TIN_10km), alpha = .2)+
+  geom_point(aes(x = PercentAg, y = mean_TIN_10km, color = Spp_code), alpha = .2)+
   labs(x = "Agr. Cover (%)", y = "Nit. Dep (kg N/sqkm/year)")+
-  theme_classic() + theme(panel.grid.major = element_line(color = "gray"))
+  theme_classic() + theme(panel.grid.major = element_line(color = "gray"), legend.position = "none")
 ag_temp <- ggplot(endo_herb)+
-  geom_point(aes(x = PercentAg, y = tmean_10km), alpha = .2)+
+  geom_point(aes(x = PercentAg, y = tmean_10km, color = Spp_code), alpha = .2)+
   labs(x = "Agr. Cover (%)", y = "Mean Annual Temp.")+
-  theme_classic() + theme(panel.grid.major = element_line(color = "gray"))
+  theme_classic() + theme(panel.grid.major = element_line(color = "gray"), legend.position = "none")
 ag_ppt <- ggplot(endo_herb)+
-  geom_point(aes(x = PercentAg, y = ppt_10km), alpha = .2)+
+  geom_point(aes(x = PercentAg, y = ppt_10km, color = Spp_code), alpha = .2)+
   labs(x = "Agr. Cover (%)", y = "Annual Precip.")+
-  theme_classic() + theme(panel.grid.major = element_line(color = "gray"))
+  theme_classic() + theme(panel.grid.major = element_line(color = "gray"), legend.position = "none")
 
 
 
 
 urb_nit <- ggplot(endo_herb)+
-  geom_point(aes(x = PercentUrban, y = mean_TIN_10km), alpha = .2)+
+  geom_point(aes(x = PercentUrban, y = mean_TIN_10km, color = Spp_code), alpha = .2)+
   labs(x = "Urban Cover (%)", y = "Nit. Dep (kg N/sqkm/year)")+
-  theme_classic() + theme(panel.grid.major = element_line(color = "gray"))
+  theme_classic() + theme(panel.grid.major = element_line(color = "gray"), legend.position = "none")
 urb_temp<- ggplot(endo_herb)+
-  geom_point(aes(x = PercentUrban, y = tmean_10km), alpha = .2)+
+  geom_point(aes(x = PercentUrban, y = tmean_10km, color = Spp_code), alpha = .2)+
   labs(x = "Urban Cover (%)", y = "Mean Annual Temp.")+
-  theme_classic() + theme(panel.grid.major = element_line(color = "gray"))
+  theme_classic() + theme(panel.grid.major = element_line(color = "gray"), legend.position = "none")
 urb_ppt <- ggplot(endo_herb)+
-  geom_point(aes(x = PercentUrban, y = ppt_10km), alpha = .2)+
+  geom_point(aes(x = PercentUrban, y = ppt_10km, color = Spp_code), alpha = .2)+
   labs(x = "Urban Cover (%)", y = "Annual Precip.")+
-  theme_classic() + theme(panel.grid.major = element_line(color = "gray"))
+  theme_classic() + theme(panel.grid.major = element_line(color = "gray"), legend.position = "none")
 
 
 
 nit_temp <- ggplot(endo_herb)+
-  geom_point(aes(x = mean_TIN_10km, y = tmean_10km), alpha = .2)+
+  geom_point(aes(x = mean_TIN_10km, y = tmean_10km, color = Spp_code), alpha = .2)+
   labs(x =  "Nit. Dep (kg N/sqkm/year)", y = "Mean Annual Temp.")+
-  theme_classic() + theme(panel.grid.major = element_line(color = "gray"))
+  theme_classic() + theme(panel.grid.major = element_line(color = "gray"), legend.position = "none")
 nit_ppt <- ggplot(endo_herb)+
-  geom_point(aes(x = mean_TIN_10km, y = ppt_10km), alpha = .2)+
+  geom_point(aes(x = mean_TIN_10km, y = ppt_10km, color = Spp_code), alpha = .2)+
   labs(x =  "Nit. Dep (kg N/sqkm/year)", y = "Annual Precip.")+
-  theme_classic() + theme(panel.grid.major = element_line(color = "gray"))
+  theme_classic() + theme(panel.grid.major = element_line(color = "gray"), legend.position = "none")
 
 
 tmean_ppt <- ggplot(endo_herb)+
-  geom_point(aes(x = tmean_10km, y = ppt_10km), alpha = .2)+
+  geom_point(aes(x = tmean_10km, y = ppt_10km, color = Spp_code), alpha = .2)+
   labs(x =  "Mean Annual Temp.", y = "Annual Precip.")+
-  theme_classic() + theme(panel.grid.major = element_line(color = "gray"))
+  scale_color_manual(name = "Host Species", labels = c("A. hyemalis", "A. perennans", "E. virginicus"),
+                     values = c("#F8766D", "#00BA38", "#619CFF"))+
+  theme_classic() + theme(panel.grid.major = element_line(color = "gray"),
+                          legend.text = element_text(face = "italic"))
 
 
 
-row_1 <- wrap_elements(ag_urb |ag_nit | ag_temp | ag_ppt )
+row_1 <- wrap_elements(ag_urb |ag_nit | ag_temp | ag_ppt)
 
-row_2 <- wrap_elements(urb_nit | urb_temp | urb_ppt| plot_spacer() )
+row_2 <- wrap_elements(urb_nit | urb_temp | urb_ppt| plot_spacer())
 row_3 <-wrap_elements(nit_temp | nit_ppt| plot_spacer() |plot_spacer() )
 row_4 <- wrap_elements(tmean_ppt |plot_spacer() |plot_spacer() |plot_spacer())
-pairs_plot <- row_1 / row_2 / row_3 /row_4 + plot_annotation(tag_levels = "A")
+pairs_plot <- row_1 / row_2 / row_3 /row_4 + plot_annotation(tag_levels = "A") + plot_layout(guides = "collect")
 ggsave(pairs_plot, filename = "Plots/pairs_plot.png", width = 8, height = 10)
 
 
