@@ -553,6 +553,9 @@ cor(endo_herb_TREND_lulc$mean_TIN_10km, endo_herb_TREND_lulc$NDep_change, method
 # Build the spatial mesh from the coords for each species and a boundary around each species predicted distribution (eventually from Jacob's work ev)
 data_summary <- endo_herb_TREND_lulc %>% 
   dplyr::summarize(year = mean(year, na.rm = T),
+                   PercentUrban = mean(PercentUrban, na.rm = T),
+                   PercentAg = mean(PercentAg, na.rm = T),
+                   mean_TIN_10km = mean(mean_TIN_10km, na.rm = T),
                    lulc_PercentUrban = mean(lulc_PercentUrban, na.rm = T),
                    lulc_PercentAg = mean(lulc_PercentAg, na.rm = T),
                    TREND_NOx= mean(TREND_NOx, na.rm = T),
@@ -563,6 +566,9 @@ data_summary <- endo_herb_TREND_lulc %>%
                    ppt_10km = mean(ppt_10km, na.rm = T))
 data <- endo_herb_TREND_lulc %>% 
   mutate(year = year - data_summary$year,
+         PercentUrban = PercentUrban - data_summary$PercentUrban,
+         PercentAg = PercentAg - data_summary$PercentAg,
+         mean_TIN_10km = mean_TIN_10km - data_summary$mean_TIN_10km,
          lulc_PercentUrban = lulc_PercentUrban - data_summary$lulc_PercentUrban,
          lulc_PercentAg = lulc_PercentAg - data_summary$lulc_PercentAg,
          TREND_NOx = TREND_NOx - data_summary$TREND_NOx,
@@ -695,6 +701,16 @@ pc_prec <- list(prior = "pcprec", param = c(1, 0.1))
 #   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
 #   collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
 #   space_int(coords, model = spde)
+s_components.old <-  ~ 0 +  fixed(main = ~ 0 + Spp_code/(mean_TIN_10km + PercentAg + PercentUrban + ppt_10km + tmean_10km), model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
+
+
+s_components.old.year <-  ~ 0 +  fixed(main = ~ 0 + (Spp_code)/(mean_TIN_10km*year + PercentAg*year + PercentUrban*year + ppt_10km  + tmean_10km), model = "fixed")+
+  scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
+  collector(collector_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$collector_index, na.rm = T)), hyper = list(pc_prec))+
+  space_int(coords, model = spde)
 
 s_components <-  ~ 0 +  fixed(main = ~ 0 + Spp_code/(TREND_NDep + lulc_PercentAg + lulc_PercentUrban + ppt_10km + tmean_10km), model = "fixed")+
   scorer(scorer_index, model = "iid", constr = TRUE, mapper = bru_mapper_index(max(data$scorer_index)), hyper = list(pc_prec)) +
@@ -733,6 +749,38 @@ fit <- bru(s_components,
 
 
 fit.year <- bru(s_components.year,
+                like(
+                  formula = s_formula,
+                  family = "binomial",
+                  Ntrials = 1,
+                  data = data
+                ),
+                options = list(
+                  control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
+                  control.inla = list(int.strategy = "eb"),
+                  verbose = TRUE
+                )
+)
+
+
+
+fit.old <- bru(s_components.old,
+           like(
+             formula = s_formula,
+             family = "binomial",
+             Ntrials = 1,
+             data = data
+           ),
+           options = list(
+             control.compute = list(dic = TRUE, waic = TRUE, cpo = TRUE),
+             control.inla = list(int.strategy = "eb"),
+             verbose = TRUE
+           )
+)
+
+
+
+fit.old.year <- bru(s_components.old.year,
                 like(
                   formula = s_formula,
                   family = "binomial",
@@ -923,6 +971,7 @@ ggsave(fig2, file = "Plots/Figure_2_temporal_data_sources_supplement.png", width
 
 # param_names <- fit.4$summary.random$fixed$ID
 param_names <- fit$summary.random$fixed$ID
+param_names.old <- fit.old$summary.random$fixed$ID
 
 n_draws <- 1000
 
@@ -934,17 +983,27 @@ posteriors <- generate(
 rownames(posteriors) <- param_names
 colnames(posteriors) <- c( paste0("iter",1:n_draws))
 
+posteriors.old <- generate(
+  fit.old,
+  formula = ~ fixed_latent,
+  n.samples = n_draws) 
+rownames(posteriors.old) <- param_names.old
+colnames(posteriors.old) <- c( paste0("iter",1:n_draws))
+
 
 posteriors_df <- as_tibble(t(posteriors), rownames = "iteration")
-
 colnames(posteriors_df) <- sub("Spp_code", "", colnames(posteriors_df))
 colnames(posteriors_df) <- gsub(":", ".", colnames(posteriors_df))
+
+posteriors.old_df <- as_tibble(t(posteriors.old), rownames = "iteration")
+colnames(posteriors.old_df) <- sub("Spp_code", "", colnames(posteriors.old_df))
+colnames(posteriors.old_df) <- gsub(":", ".", colnames(posteriors.old_df))
 
 # Calculate the effects of the predictor, given that the reference level is for AGHY
 effects_df <- posteriors_df %>% 
   rename(AGHY.Int = AGHY, AGPE.Int = AGPE, ELVI.Int = ELVI) %>% 
   pivot_longer( cols = -c(iteration), names_to = "param") %>% 
-  mutate(model = "No Year") %>% 
+  mutate(model = "No Year", data = "dynamic") %>% 
   mutate(param_label = sub("^[^.]+.", "", param),
          spp_label = sub("\\..*","", param)) %>% 
   mutate(param_f = factor(str_replace_all(param_label, c("\\." = " X ",
@@ -958,15 +1017,30 @@ effects_df <- posteriors_df %>%
          spp_f = factor(case_when(spp_label == "ELVI" ~ "E. virginicus", spp_label == "AGPE" ~ "A. perennans", spp_label == "AGHY" ~ "A. hyemalis"),
                         levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus"))))
 
+effects.old_df <- posteriors.old_df %>% 
+  rename(AGHY.Int = AGHY, AGPE.Int = AGPE, ELVI.Int = ELVI) %>% 
+  pivot_longer( cols = -c(iteration), names_to = "param") %>% 
+  mutate(model = "No Year", data = "static") %>% 
+  mutate(param_label = sub("^[^.]+.", "", param),
+         spp_label = sub("\\..*","", param)) %>% 
+  mutate(param_f = factor(str_replace_all(param_label, c("\\." = " X ",
+                                                         "Int" = "Intercept",
+                                                         "PercentAg" = "Agr.",
+                                                         "PercentUrban" = "Urb.",
+                                                         "mean_TIN_10km" = "Nit.",
+                                                         "ppt_10km" = "PPT.",
+                                                         "tmean_10km" = "Temp.")),
+                          levels = c("Intercept","Nit.","Agr.","Urb.","PPT.","Temp.")),
+         spp_f = factor(case_when(spp_label == "ELVI" ~ "E. virginicus", spp_label == "AGPE" ~ "A. perennans", spp_label == "AGHY" ~ "A. hyemalis"),
+                        levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus"))))
 
 
 
+effects_df_combo <- bind_rows(effects_df, effects.old_df)
 
 
-
-posterior_hist <- ggplot(effects_df)+
-  stat_halfeye(aes(x = value, y = spp_f, fill  = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
-  
+posterior_hist <- ggplot(effects_df_combo)+
+  stat_halfeye(aes(x = value, y = spp_f, fill  = data, color = data), breaks = 50, normalize = "groups", alpha = .6)+
   # stat_halfeye(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
   # stat_histinterval(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, alpha = .6)+
   # geom_point(data = posteriors_summary, aes(x = mean, y = spp_label, color = spp_label))+
@@ -974,16 +1048,16 @@ posterior_hist <- ggplot(effects_df)+
   
   geom_vline(xintercept = 0)+
   facet_wrap(~param_f, scales = "free_x", ncol = 6)+
-  labs(x = "Posterior Est.", y = "Species")+
-  guides(fill = "none")+
-  scale_color_manual(values = species_colors)+
-  scale_fill_manual(values = species_colors)+
+  labs(x = "Posterior Est.", y = "Species", fill = "Data Source", color = "Data Source", title = "Mean Prevalence Model", subtitle = "1930-2017 specimens only" )+
+  # guides(color = "none")+
+  scale_color_manual(values = c("salmon", "grey"))+
+  scale_fill_manual(values = c("salmon", "grey"))+
   scale_x_continuous(labels = scales::label_scientific(), guide = guide_axis(check.overlap = TRUE))+
   theme_bw() + theme(axis.text.y = element_text(face = "italic"),
                      axis.text.x = element_text(size = rel(.8)))
 
-# posterior_hist
-ggsave(posterior_hist, filename = "Plots/posterior_hist_temporal_data_sources_Supp.png", width = 8, height = 3)
+posterior_hist
+ggsave(posterior_hist, filename = "Plots/posterior_hist_temporal_data_sources_Supp1.png", width = 8, height = 3)
 
 
 
@@ -1245,6 +1319,11 @@ param_names <- fit.year$summary.random$fixed$ID
 param_names <- gsub(":year:lulc_PercentAg", ":lulc_PercentAg:year", param_names)
 param_names <- gsub(":year:lulc_PercentUrban", ":lulc_PercentUrban:year", param_names)
 
+param_names.old <- fit.old.year$summary.random$fixed$ID
+param_names.old <- gsub(":year:PercentAg", ":PercentAg:year", param_names.old)
+param_names.old <- gsub(":year:PercentUrban", ":PercentUrban:year", param_names.old)
+
+
 n_draws <- 1000
 
 # we can sample values from the join posteriors of the parameters with the addition of "_latent" to the parameter name
@@ -1255,18 +1334,28 @@ posteriors <- generate(
 rownames(posteriors) <- param_names
 colnames(posteriors) <- c( paste0("iter",1:n_draws))
 
+posteriors.old <- generate(
+  fit.old.year,
+  formula = ~ fixed_latent,
+  n.samples = n_draws) 
+rownames(posteriors.old) <- param_names.old
+colnames(posteriors.old) <- c( paste0("iter",1:n_draws))
+
 
 posteriors_df <- as_tibble(t(posteriors), rownames = "iteration")
-
-
 colnames(posteriors_df) <- sub("Spp_code", "", colnames(posteriors_df))
 colnames(posteriors_df) <- gsub(":", ".", colnames(posteriors_df))
+
+posteriors.old_df <- as_tibble(t(posteriors.old), rownames = "iteration")
+colnames(posteriors.old_df) <- sub("Spp_code", "", colnames(posteriors.old_df))
+colnames(posteriors.old_df) <- gsub(":", ".", colnames(posteriors.old_df))
+
 
 # Calculate the effects of the predictor, given that the reference level is for AGHY
 effects_df <- posteriors_df %>% 
   rename(AGHY.Int = AGHY, AGPE.Int = AGPE, ELVI.Int = ELVI) %>% 
   pivot_longer( cols = -c(iteration), names_to = "param") %>% 
-  mutate(model = "Year") %>% 
+  mutate(model = "Year", data = "dynamic") %>% 
   mutate(param_label = sub("^[^.]+.", "", param),
          spp_label = sub("\\..*","", param)) %>% 
   mutate(param_f = factor(str_replace_all(param_label, c("\\." = " X ",
@@ -1284,8 +1373,29 @@ effects_df <- posteriors_df %>%
 
 
 
-posterior_hist <- ggplot(effects_df)+
-  stat_halfeye(aes(x = value, y = spp_f, fill  = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
+effects.old_df <- posteriors.old_df %>% 
+  rename(AGHY.Int = AGHY, AGPE.Int = AGPE, ELVI.Int = ELVI) %>% 
+  pivot_longer( cols = -c(iteration), names_to = "param") %>% 
+  mutate(model = "Year", data = "static") %>% 
+  mutate(param_label = sub("^[^.]+.", "", param),
+         spp_label = sub("\\..*","", param)) %>% 
+  mutate(param_f = factor(str_replace_all(param_label, c("\\." = " X ",
+                                                         "Int" = "Intercept",
+                                                         "year" = "Year",
+                                                         "PercentAg" = "Agr.",
+                                                         "PercentUrban" = "Urb.",
+                                                         "mean_TIN_10km" = "Nit.",
+                                                         "ppt_10km" = "Ppt.",
+                                                         "tmean_10km" = "Temp.")),
+                          levels = c("Intercept"  ,"Nit.","Agr.","Urb.","Ppt.", "Temp.", "Year", "Agr. X Year", "Urb. X Year", "Nit. X Year")),
+         spp_f = factor(case_when(spp_label == "ELVI" ~ "E. virginicus", spp_label == "AGPE" ~ "A. perennans", spp_label == "AGHY" ~ "A. hyemalis"),
+                        levels = rev(c("A. hyemalis", "A. perennans", "E. virginicus"))))
+
+
+effects.combo_df <- bind_rows(effects_df, effects.old_df)
+
+posterior_hist <- ggplot(effects.combo_df)+
+  stat_halfeye(aes(x = value, y = spp_f, fill  = data, color = data), breaks = 50, normalize = "groups", alpha = .6)+
   
   # stat_halfeye(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, normalize = "panels", alpha = .6)+
   # stat_histinterval(aes(x = value, y = spp_label, fill = spp_label), breaks = 50, alpha = .6)+
@@ -1293,11 +1403,12 @@ posterior_hist <- ggplot(effects_df)+
   # geom_linerange(data = posteriors_summary, aes(xmin = lwr, xmax = upr, y = spp_label, color = spp_label))+
   
   geom_vline(xintercept = 0)+
-  facet_wrap(~param_f, scales = "free_x", ncol = 6)+
-  labs(x = "Posterior Est.", y = "Species")+
-  guides(fill = "none")+
-  scale_color_manual(values = species_colors)+
-  scale_fill_manual(values = species_colors)+
+  facet_wrap(~param_f + data, scales = "free_x", ncol = 6)+
+  
+  labs(x = "Posterior Est.", y = "Species", fill = "Data Source", color = "Data Source", title = "Prevalence Trends Model", subtitle = "1930-2017 specimens only" )+
+  # guides(color = "none")+
+  scale_color_manual(values = c("salmon", "grey"))+
+  scale_fill_manual(values = c("salmon", "grey"))+
   scale_x_continuous(labels = scales::label_scientific(), guide = guide_axis(check.overlap = TRUE))+
   theme_bw() + theme(axis.text.y = element_text(face = "italic"),
                      axis.text.x = element_text(size = rel(.8)))
