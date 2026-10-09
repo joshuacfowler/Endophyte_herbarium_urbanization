@@ -502,6 +502,48 @@ ggplot(endo_herb_TREND_lulc)+
   geom_point(aes(x = PercentUrban, lulc_PercentUrban))
 ggplot(endo_herb_TREND_lulc)+
   geom_point(aes(x = PercentAg, lulc_PercentAg))
+ggplot(endo_herb_TREND_lulc)+
+  geom_point(aes(x = ppt_10km, TREND_NDep))
+
+ggplot(endo_herb_TREND_lulc)+
+  geom_point(aes(x = mean_TIN_10km, TREND_NDep))
+ggplot(endo_herb_TREND_lulc)+
+  geom_point(aes(x = mean_TIN_10km, NDep_change))
+ggplot(endo_herb_TREND_lulc)+
+  geom_point(aes(x = TREND_NDep, NDep_change))
+
+
+
+ggplot(endo_herb_TREND_lulc)+
+  geom_point(aes(x = lulc_PercentAg, lulc_PercentUrban))
+ggplot(endo_herb_TREND_lulc)+
+  geom_point(aes(x = PercentAg, PercentUrban))
+
+
+##### looking at correlations
+cor(endo_herb_TREND_lulc$lulc_PercentAg, endo_herb_TREND_lulc$lulc_PercentUrban, method = "pearson")
+cor(endo_herb_TREND_lulc$lulc_PercentAg, endo_herb_TREND_lulc$lulc_PercentUrban, method = "spearman")
+
+cor(endo_herb_TREND_lulc$PercentAg, endo_herb_TREND_lulc$PercentUrban, method = "pearson")
+cor(endo_herb_TREND_lulc$PercentAg, endo_herb_TREND_lulc$PercentUrban, method = "spearman")
+
+cor(endo_herb_TREND_lulc$PercentUrban, endo_herb_TREND_lulc$lulc_PercentUrban, method = "pearson")
+cor(endo_herb_TREND_lulc$PercentUrban, endo_herb_TREND_lulc$lulc_PercentUrban, method = "spearman")
+
+cor(endo_herb_TREND_lulc$PercentAg, endo_herb_TREND_lulc$lulc_PercentAg, method = "pearson")
+cor(endo_herb_TREND_lulc$PercentAg, endo_herb_TREND_lulc$lulc_PercentAg, method = "spearman")
+
+cor(endo_herb_TREND_lulc$mean_TIN_10km, endo_herb_TREND_lulc$TREND_NDep, method = "pearson")
+cor(endo_herb_TREND_lulc$mean_TIN_10km, endo_herb_TREND_lulc$TREND_NDep, method = "spearman")
+
+cor(endo_herb_TREND_lulc$mean_TIN_10km, endo_herb_TREND_lulc$NDep_change, method = "pearson")
+cor(endo_herb_TREND_lulc$mean_TIN_10km, endo_herb_TREND_lulc$NDep_change, method = "spearman")
+
+
+
+
+
+
 ##########################################################################################
 ############ Setting up and running INLA model with inlabru ############################### 
 ##########################################################################################
@@ -1297,14 +1339,14 @@ NDep_start_end <- NDep_change %>% dplyr::select("STATEFP", "COUNTYFP", "COUNTYNS
 # We can use NDep_change for the same info about nit dep, and this is already merged into the original data dataframe
 data_change <- data %>% left_join(lulc_start_end) 
 
-preddata_1930 <- data_change %>% 
-  dplyr::select(Spp_code, year,lon, lat, TREND_NDep, lulc_PercentAg, lulc_PercentAg, ppt_10km, tmean_10km, NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017) %>% 
-  st_drop_geometry() %>% 
+preddata_1930 <- data_change %>%
+  dplyr::select(Spp_code, year,lon, lat, TREND_NDep, lulc_PercentAg, lulc_PercentAg, ppt_10km, tmean_10km, NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017) %>%
+  st_drop_geometry() %>%
   mutate(TREND_NDep = NDep_1930 - data_summary$TREND_NDep,
          lulc_PercentAg = lulc_PercentAg_1930 - data_summary$lulc_PercentAg,
          lulc_PercentUrban = lulc_PercentUrban_1930 - data_summary$lulc_PercentUrban,
          year = 1930 - data_summary$year,
-         ppt_10km = 0, 
+         ppt_10km = 0,
          tmean_10km = 0,
          collector_index = 9999, scorer_index = 9999,
          species = case_when(Spp_code == "AGHY" ~ species_names[1],
@@ -1313,14 +1355,14 @@ preddata_1930 <- data_change %>%
          year_label = case_when(year >=0 ~ "max_year",
                                 year < 0 ~ "min_year")) %>% dplyr::select(-c(NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017))
 
-preddata_2017 <- data_change %>% 
-  dplyr::select(Spp_code, year, lon, lat, TREND_NDep, lulc_PercentAg, lulc_PercentAg, ppt_10km, tmean_10km, NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017) %>% 
-  st_drop_geometry() %>% 
+preddata_2017 <- data_change %>%
+  dplyr::select(Spp_code, year, lon, lat, TREND_NDep, lulc_PercentAg, lulc_PercentAg, ppt_10km, tmean_10km, NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017) %>%
+  st_drop_geometry() %>%
   mutate(TREND_NDep = NDep_2017 - data_summary$TREND_NDep,
          lulc_PercentAg = lulc_PercentAg_2017 - data_summary$lulc_PercentAg,
          lulc_PercentUrban = lulc_PercentUrban_2017 - data_summary$lulc_PercentUrban,
          year = 2017 - data_summary$year,
-         ppt_10km = 0, 
+         ppt_10km = 0,
          tmean_10km = 0,
          collector_index = 9999, scorer_index = 9999,
          species = case_when(Spp_code == "AGHY" ~ species_names[1],
@@ -1328,6 +1370,38 @@ preddata_2017 <- data_change %>%
                              Spp_code == "ELVI" ~ species_names[3]),
          year_label = case_when(year >=0 ~ "max_year",
                                 year < 0 ~ "min_year")) %>% dplyr::select(-c(NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017))
+
+# preddata_1930 <- data_change %>% 
+#   dplyr::select(Spp_code, year,lon, lat, TREND_NDep, lulc_PercentAg, lulc_PercentAg, ppt_10km, tmean_10km, NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017) %>% 
+#   st_drop_geometry() %>% 
+#   mutate(TREND_NDep = 0,#NDep_1930 - data_summary$TREND_NDep,
+#          lulc_PercentAg = 0,#lulc_PercentAg_1930 - data_summary$lulc_PercentAg,
+#          lulc_PercentUrban = lulc_PercentUrban_1930 - data_summary$lulc_PercentUrban,
+#          year = 1930 - data_summary$year,
+#          ppt_10km = 0, 
+#          tmean_10km = 0,
+#          collector_index = 9999, scorer_index = 9999,
+#          species = case_when(Spp_code == "AGHY" ~ species_names[1],
+#                              Spp_code == "AGPE" ~ species_names[2],
+#                              Spp_code == "ELVI" ~ species_names[3]),
+#          year_label = case_when(year >=0 ~ "max_year",
+#                                 year < 0 ~ "min_year")) %>% dplyr::select(-c(NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017))
+# 
+# preddata_2017 <- data_change %>% 
+#   dplyr::select(Spp_code, year, lon, lat, TREND_NDep, lulc_PercentAg, lulc_PercentAg, ppt_10km, tmean_10km, NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017) %>% 
+#   st_drop_geometry() %>% 
+#   mutate(TREND_NDep = 0,#NDep_2017 - data_summary$TREND_NDep,
+#          lulc_PercentAg = 0,#lulc_PercentAg_2017 - data_summary$lulc_PercentAg,
+#          lulc_PercentUrban = lulc_PercentUrban_2017 - data_summary$lulc_PercentUrban,
+#          year = 2017 - data_summary$year,
+#          ppt_10km = 0, 
+#          tmean_10km = 0,
+#          collector_index = 9999, scorer_index = 9999,
+#          species = case_when(Spp_code == "AGHY" ~ species_names[1],
+#                              Spp_code == "AGPE" ~ species_names[2],
+#                              Spp_code == "ELVI" ~ species_names[3]),
+#          year_label = case_when(year >=0 ~ "max_year",
+#                                 year < 0 ~ "min_year")) %>% dplyr::select(-c(NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017))
 
 preddata <- bind_rows(preddata_1930, preddata_2017) %>% distinct()
 
@@ -1372,7 +1446,7 @@ ag_trend <- ggplot(avg_change)+
   theme_classic()+
   theme(strip.background = element_blank(),
         strip.text.y.right =element_blank())
-# ag_trend
+ag_trend
 
 urb_trend <- ggplot(avg_change)+
   geom_hline(yintercept = 0, color = "gray60")+
@@ -1385,7 +1459,7 @@ urb_trend <- ggplot(avg_change)+
   theme_classic()+
   theme(strip.background = element_blank(),
         strip.text.y.right =element_blank())
-# urb_trend
+urb_trend
 
 nit_trend <- ggplot(avg_change)+
   geom_hline(yintercept = 0, color = "gray60")+
@@ -1398,7 +1472,7 @@ nit_trend <- ggplot(avg_change)+
   theme_classic()+
   theme(strip.background = element_blank(),
         strip.text.y.right =element_text(face = "italic", angle = 0))
-# nit_trend
+nit_trend
 
 
 ag_trend_tag <- tag_facet(ag_trend)
@@ -1607,7 +1681,7 @@ ag_urb_prob <- ggplot(avg_change)+
   scale_alpha_continuous(limits = c(0,1), guide = "none")+
   scale_fill_distiller(palette = "YlGn", direction = 1, limits = c(.5, 1))+
   # scale_fill_viridis_c(option = "turbo")+
-  labs(fill = "Probability of Effect", x = "1930 to 2027 Change Ag. in Land Cover (%)", y = "Urban. Land Cover (%)")+
+  labs(fill = "Probability of Effect", x = "Ag. in Land Cover (%)", y = "Urban. Land Cover (%)")+
   theme_classic()+
   theme(strip.background = element_blank(),
         strip.text.y.right = element_blank())
@@ -1646,7 +1720,7 @@ urb_nit_prob <- ggplot(avg_change)+
   labs(fill = "Probability of Effect", x = "Nitrogen Deposition (kg N/km^2)", y = "Urban. Land Cover (%)")+
   theme_classic()+
   theme(strip.background = element_blank(),
-        strip.text.y.right = element_blank())
+        strip.text.y.right = element_text(face = "italic", angle = 0))
 # urb_nit_prob
 
 
@@ -1672,6 +1746,308 @@ ggsave(Fig_trends_2017_supp, filename = "Plots/Fig_trends_2017_supp.png", width 
 
 
 
+##### plotting just the trends for the highest and lowest by 2017 values 
+
+preddata_1930_urb <- data_change %>%
+  dplyr::select(Spp_code, year,lon, lat, TREND_NDep, lulc_PercentAg, lulc_PercentAg, ppt_10km, tmean_10km, NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017) %>%
+  st_drop_geometry() %>%
+  mutate(TREND_NDep = 0, #NDep_1930 - data_summary$TREND_NDep,
+         lulc_PercentAg = 0, #lulc_PercentAg_1930 - data_summary$lulc_PercentAg,
+         lulc_PercentUrban = lulc_PercentUrban_1930 - data_summary$lulc_PercentUrban,
+         year = 1930 - data_summary$year,
+         ppt_10km = 0,
+         tmean_10km = 0,
+         collector_index = 9999, scorer_index = 9999,
+         species = case_when(Spp_code == "AGHY" ~ species_names[1],
+                             Spp_code == "AGPE" ~ species_names[2],
+                             Spp_code == "ELVI" ~ species_names[3]),
+         year_label = case_when(year >=0 ~ "max_year",
+                                year < 0 ~ "min_year")) %>% dplyr::select(-c(NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017))
+
+preddata_2017_urb <- data_change %>%
+  dplyr::select(Spp_code, year, lon, lat, TREND_NDep, lulc_PercentAg, lulc_PercentAg, ppt_10km, tmean_10km, NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017) %>%
+  st_drop_geometry() %>%
+  mutate(TREND_NDep = 0, #NDep_2017 - data_summary$TREND_NDep,
+         lulc_PercentAg = 0, #lulc_PercentAg_2017 - data_summary$lulc_PercentAg,
+         lulc_PercentUrban = lulc_PercentUrban_2017 - data_summary$lulc_PercentUrban,
+         year = 2017 - data_summary$year,
+         ppt_10km = 0,
+         tmean_10km = 0,
+         collector_index = 9999, scorer_index = 9999,
+         species = case_when(Spp_code == "AGHY" ~ species_names[1],
+                             Spp_code == "AGPE" ~ species_names[2],
+                             Spp_code == "ELVI" ~ species_names[3]),
+         year_label = case_when(year >=0 ~ "max_year",
+                                year < 0 ~ "min_year")) %>% dplyr::select(-c(NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017))
+preddata_urb <- bind_rows(preddata_1930_urb, preddata_2017_urb) %>% distinct()
+
+preddata_1930_ag <- data_change %>%
+  dplyr::select(Spp_code, year,lon, lat, TREND_NDep, lulc_PercentAg, lulc_PercentAg, ppt_10km, tmean_10km, NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017) %>%
+  st_drop_geometry() %>%
+  mutate(TREND_NDep = 0, #NDep_1930 - data_summary$TREND_NDep,
+         lulc_PercentAg = lulc_PercentAg_1930 - data_summary$lulc_PercentAg,
+         lulc_PercentUrban = 0, #lulc_PercentUrban_1930 - data_summary$lulc_PercentUrban,
+         year = 1930 - data_summary$year,
+         ppt_10km = 0,
+         tmean_10km = 0,
+         collector_index = 9999, scorer_index = 9999,
+         species = case_when(Spp_code == "AGHY" ~ species_names[1],
+                             Spp_code == "AGPE" ~ species_names[2],
+                             Spp_code == "ELVI" ~ species_names[3]),
+         year_label = case_when(year >=0 ~ "max_year",
+                                year < 0 ~ "min_year")) %>% dplyr::select(-c(NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017))
+
+preddata_2017_ag <- data_change %>%
+  dplyr::select(Spp_code, year, lon, lat, TREND_NDep, lulc_PercentAg, lulc_PercentAg, ppt_10km, tmean_10km, NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017) %>%
+  st_drop_geometry() %>%
+  mutate(TREND_NDep = 0, #NDep_2017 - data_summary$TREND_NDep,
+         lulc_PercentAg = lulc_PercentAg_2017 - data_summary$lulc_PercentAg,
+         lulc_PercentUrban = 0, #lulc_PercentUrban_2017 - data_summary$lulc_PercentUrban,
+         year = 2017 - data_summary$year,
+         ppt_10km = 0,
+         tmean_10km = 0,
+         collector_index = 9999, scorer_index = 9999,
+         species = case_when(Spp_code == "AGHY" ~ species_names[1],
+                             Spp_code == "AGPE" ~ species_names[2],
+                             Spp_code == "ELVI" ~ species_names[3]),
+         year_label = case_when(year >=0 ~ "max_year",
+                                year < 0 ~ "min_year")) %>% dplyr::select(-c(NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017))
+preddata_ag <- bind_rows(preddata_1930_ag, preddata_2017_ag) %>% distinct()
+
+
+preddata_1930_nit <- data_change %>%
+  dplyr::select(Spp_code, year,lon, lat, TREND_NDep, lulc_PercentAg, lulc_PercentAg, ppt_10km, tmean_10km, NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017) %>%
+  st_drop_geometry() %>%
+  mutate(TREND_NDep = NDep_1930 - data_summary$TREND_NDep,
+         lulc_PercentAg = 0, #lulc_PercentAg_1930 - data_summary$lulc_PercentAg,
+         lulc_PercentUrban = 0, #lulc_PercentUrban_1930 - data_summary$lulc_PercentUrban,
+         year = 1930 - data_summary$year,
+         ppt_10km = 0,
+         tmean_10km = 0,
+         collector_index = 9999, scorer_index = 9999,
+         species = case_when(Spp_code == "AGHY" ~ species_names[1],
+                             Spp_code == "AGPE" ~ species_names[2],
+                             Spp_code == "ELVI" ~ species_names[3]),
+         year_label = case_when(year >=0 ~ "max_year",
+                                year < 0 ~ "min_year")) %>% dplyr::select(-c(NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017))
+
+preddata_2017_nit <- data_change %>%
+  dplyr::select(Spp_code, year, lon, lat, TREND_NDep, lulc_PercentAg, lulc_PercentAg, ppt_10km, tmean_10km, NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017) %>%
+  st_drop_geometry() %>%
+  mutate(TREND_NDep = NDep_2017 - data_summary$TREND_NDep,
+         lulc_PercentAg = 0, #lulc_PercentAg_2017 - data_summary$lulc_PercentAg,
+         lulc_PercentUrban = 0, #lulc_PercentUrban_2017 - data_summary$lulc_PercentUrban,
+         year = 2017 - data_summary$year,
+         ppt_10km = 0,
+         tmean_10km = 0,
+         collector_index = 9999, scorer_index = 9999,
+         species = case_when(Spp_code == "AGHY" ~ species_names[1],
+                             Spp_code == "AGPE" ~ species_names[2],
+                             Spp_code == "ELVI" ~ species_names[3]),
+         year_label = case_when(year >=0 ~ "max_year",
+                                year < 0 ~ "min_year")) %>% dplyr::select(-c(NDep_1930, NDep_2017, lulc_PercentAg_1930, lulc_PercentAg_2017, lulc_PercentUrban_1930, lulc_PercentUrban_2017))
+preddata_nit <- bind_rows(preddata_1930_nit, preddata_2017_nit) %>% distinct()
+
+
+
+
+year.pred_urb <- generate(
+  fit.year,
+  newdata = preddata_urb,
+  formula = ~ invlogit(fixed),#+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  # probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
+  n.samples = 500) 
+colnames(year.pred_urb) <- paste0("iter", 1:500) 
+
+
+year.pred_ag <- generate(
+  fit.year,
+  newdata = preddata_ag,
+  formula = ~ invlogit(fixed),#+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  # probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
+  n.samples = 500) 
+colnames(year.pred_ag) <- paste0("iter", 1:500) 
+
+
+year.pred_nit <- generate(
+  fit.year,
+  newdata = preddata_nit,
+  formula = ~ invlogit(fixed),#+ collector_eval(collector_index) + scorer_eval(scorer_index)),
+  # probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
+  n.samples = 500) 
+colnames(year.pred_nit) <- paste0("iter", 1:500) 
+
+avg_change_urb <- tibble(preddata_urb, as_tibble(year.pred_urb)) %>% 
+  pivot_longer(cols = iter1:iter500, names_to = "iteration", values_to = "posterior") %>% 
+  dplyr::select(-year, -TREND_NDep, -lulc_PercentAg, -lulc_PercentUrban, -ppt_10km, -tmean_10km) %>% 
+  pivot_wider(id_cols = c(Spp_code, lon, lat, species, iteration), names_from = c(year_label), values_from = posterior, names_prefix = "post.") %>% 
+  mutate(diff = (post.max_year - post.min_year)*100) %>% 
+  group_by(Spp_code, species, lon, lat) %>% 
+  dplyr::summarise(diff_mean = mean(diff),
+                   diff_median = median(diff),
+                   lwr = quantile(diff, .025),
+                   upr = quantile(diff, .975),
+                   prob_pos = sum(diff>0)/500,
+                   diff_prob = max((sum(diff<0)/500),(sum(diff>0)/500)),
+                   diff_prob_threshold = case_when(diff_prob>=.90 ~ .8,#">=.90", 
+                                                   TRUE ~ .2)) %>% left_join(lulc_start_end) %>% left_join(data %>% dplyr::select(lat, lon, NDep_1930, NDep_2017) %>% distinct() %>% st_drop_geometry()) 
+
+
+avg_change_ag <- tibble(preddata_ag, as_tibble(year.pred_ag)) %>% 
+  pivot_longer(cols = iter1:iter500, names_to = "iteration", values_to = "posterior") %>% 
+  dplyr::select(-year, -TREND_NDep, -lulc_PercentAg, -lulc_PercentUrban, -ppt_10km, -tmean_10km) %>% 
+  pivot_wider(id_cols = c(Spp_code, lon, lat, species, iteration), names_from = c(year_label), values_from = posterior, names_prefix = "post.") %>% 
+  mutate(diff = (post.max_year - post.min_year)*100) %>% 
+  group_by(Spp_code, species, lon, lat) %>% 
+  dplyr::summarise(diff_mean = mean(diff),
+                   diff_median = median(diff),
+                   lwr = quantile(diff, .025),
+                   upr = quantile(diff, .975),
+                   prob_pos = sum(diff>0)/500,
+                   diff_prob = max((sum(diff<0)/500),(sum(diff>0)/500)),
+                   diff_prob_threshold = case_when(diff_prob>=.90 ~ .8,#">=.90", 
+                                                   TRUE ~ .2)) %>% left_join(lulc_start_end) %>% left_join(data %>% dplyr::select(lat, lon, NDep_1930, NDep_2017) %>% distinct() %>% st_drop_geometry()) 
+
+
+
+avg_change_nit <- tibble(preddata_nit, as_tibble(year.pred_nit)) %>% 
+  pivot_longer(cols = iter1:iter500, names_to = "iteration", values_to = "posterior") %>% 
+  dplyr::select(-year, -TREND_NDep, -lulc_PercentAg, -lulc_PercentUrban, -ppt_10km, -tmean_10km) %>% 
+  pivot_wider(id_cols = c(Spp_code, lon, lat, species, iteration), names_from = c(year_label), values_from = posterior, names_prefix = "post.") %>% 
+  mutate(diff = (post.max_year - post.min_year)*100) %>% 
+  group_by(Spp_code, species, lon, lat) %>% 
+  dplyr::summarise(diff_mean = mean(diff),
+                   diff_median = median(diff),
+                   lwr = quantile(diff, .025),
+                   upr = quantile(diff, .975),
+                   prob_pos = sum(diff>0)/500,
+                   diff_prob = max((sum(diff<0)/500),(sum(diff>0)/500)),
+                   diff_prob_threshold = case_when(diff_prob>=.90 ~ .8,#">=.90", 
+                                                   TRUE ~ .2)) %>% left_join(lulc_start_end) %>% left_join(data %>% dplyr::select(lat, lon, NDep_1930, NDep_2017) %>% distinct() %>% st_drop_geometry()) 
+
+ag_trend <- ggplot(avg_change_ag)+
+  geom_hline(yintercept = 0, color = "gray60")+
+  geom_smooth(aes(x = lulc_PercentAg_2017, y = diff_mean), method = "lm", color = "black")+
+  geom_point(aes(x = lulc_PercentAg_2017, y = diff_mean, fill = diff_mean, alpha = diff_prob_threshold), shape = 21, size = 3)+
+  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-60, 60))+
+  scale_alpha_continuous(limits = c(0,1), guide = "none")+
+  facet_wrap(~species, ncol = 1,  strip.position = "right", scales = "free")+
+  labs(fill = "% Prevalence / Period", x = "1930 to 2017 Change in Ag. Land Cover (%)", y = "Change in % Prevalence / Period")+
+  theme_classic()+
+  theme(strip.background = element_blank(),
+        strip.text.y.right =element_blank())
+ag_trend
+
+
+urb_trend <- ggplot(avg_change_urb)+
+  geom_hline(yintercept = 0, color = "gray60")+
+  geom_smooth(aes(x = lulc_PercentUrban_2017, y = diff_mean), method = "lm", color = "black")+
+  geom_point(aes(x = lulc_PercentUrban_2017, y = diff_mean, fill = diff_mean, alpha = diff_prob_threshold), shape = 21, size = 3)+
+  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-60, 60))+
+  scale_alpha_continuous(limits = c(0,1), guide = "none")+
+  facet_wrap(~species, ncol = 1,  strip.position = "right", scales = "free")+
+  labs(fill = "% Prevalence / Period", x = "1930 to 2017 Change in Urb. Land Cover (%)", y = "Change in % Prevalence / Period")+
+  theme_classic()+
+  theme(strip.background = element_blank(),
+        strip.text.y.right =element_blank())
+urb_trend
+
+nit_trend <- ggplot(avg_change_nit)+
+  geom_hline(yintercept = 0, color = "gray60")+
+  geom_smooth(aes(x = NDep_2017, y = diff_mean), method = "lm", color = "black")+
+  geom_point(aes(x = NDep_2017, y = diff_mean, fill = diff_mean, alpha = diff_prob_threshold), shape = 21, size = 3)+
+  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-60, 60))+
+  scale_alpha_continuous(limits = c(0,1), guide = "none")+
+  facet_wrap(~species, ncol = 1,  strip.position = "right", scales = "free")+
+  labs(fill = "% Prevalence / Period", x = "1930 to 2017 Change in Nit. Dep. (kg N/km^2)", y = "Change in % Prevalence / Period")+
+  theme_classic()+
+  theme(strip.background = element_blank(),
+        strip.text.y.right =element_blank())
+nit_trend
+
+
+
+ggplot(avg_change)+
+  geom_point(aes(x = lulc_PercentUrban_1930, y = lulc_PercentUrban_2017))+
+  facet_wrap(~species)
+
+
+ggplot(avg_change)+
+  geom_point(aes(x = lulc_PercentAg_1930, y = lulc_PercentAg_2017))+
+  facet_wrap(~species)
+
+ggplot(avg_change)+
+  geom_point(aes(x = NDep_1930, y = NDep_2017))+
+  facet_wrap(~species)
+
+ggplot(avg_change)+
+  geom_point(aes(x = (NDep_2017-NDep_1930), y = (lulc_PercentUrban_2017-lulc_PercentUrban_1930)))+
+  geom_smooth(aes(x = (NDep_2017-NDep_1930), y = (lulc_PercentUrban_2017-lulc_PercentUrban_1930)), method = "lm")
+
+
+ggplot(avg_change)+
+  geom_point(aes(x = (NDep_2017-NDep_1930), y = (lulc_PercentAg_2017-lulc_PercentAg_1930)))+
+  geom_smooth(aes(x = (NDep_2017-NDep_1930), y = (lulc_PercentAg_2017-lulc_PercentAg_1930)), method = "lm")
+
+
+ggplot(avg_change)+
+  geom_point(aes(x = (lulc_PercentAg_2017-lulc_PercentAg_1930 ), y = (lulc_PercentUrban_2017-lulc_PercentUrban_1930 )))+
+  geom_smooth(aes(x = (lulc_PercentAg_2017-lulc_PercentAg_1930), y = (lulc_PercentUrban_2017-lulc_PercentUrban_1930 )), method = "glm") + 
+  facet_wrap(~species)
+
+
+ggplot(avg_change)+
+  geom_point(aes(x = (lulc_PercentUrban_2017), y = (lulc_PercentUrban_2017-lulc_PercentUrban_1930 )))+
+  geom_smooth(aes(x = (lulc_PercentUrban_2017), y = (lulc_PercentUrban_2017-lulc_PercentUrban_1930 )), method = "glm") + 
+  facet_wrap(~species)
+
+
+ggplot(avg_change)+
+  geom_point(aes(x = (lulc_PercentUrban_2017), y = (lulc_PercentAg_2017-lulc_PercentAg_1930 )))+
+  geom_smooth(aes(x = (lulc_PercentUrban_2017), y = (lulc_PercentAg_2017-lulc_PercentAg_1930 )), method = "glm") + 
+  facet_wrap(~species)
+
+
+change_ag <- avg_change$lulc_PercentAg_2017-avg_change$lulc_PercentAg_1930
+model <- lm(avg_change$lulc_PercentAg_2017 ~ change_ag)
+summary(model)$r.squared
+
+change_urb <- avg_change$lulc_PercentUrban_2017-avg_change$lulc_PercentUrban_1930
+model <- lm(avg_change$lulc_PercentUrban_2017 ~ change_urb)
+summary(model)$r.squared
+
+change_nit <- avg_change$NDep_2017-avg_change$NDep_1930
+model <- lm(avg_change$NDep_2017 ~ change_nit)
+summary(model)$r.squared
+####################################################################################
+###### Looking at mean endophyte scores  pre-1930 ##############
+####################################################################################
+endo_herb_means <- endo_herb %>% 
+  st_drop_geometry() %>% 
+  mutate(year_bin = case_when(year<1930 ~ "pre", TRUE ~ "post")) %>% 
+  group_by(species, year_bin) %>% 
+  summarize(mean = mean(Endo_status_liberal),
+            sample_size = n())
+
+pre_post_plot <- ggplot(endo_herb_means)+
+  geom_point(aes(x = year_bin, y = mean, size = sample_size ))+
+  facet_wrap(~species)
+
+pre_post_plot
+
+
+
+
+
+
+
+
+
+
+
+
+
+##### old stuff #######
 
 
 
@@ -1697,22 +2073,48 @@ ggsave(Fig_trends_2017_supp, filename = "Plots/Fig_trends_2017_supp.png", width 
 
 
 
-simple_trend_plot <- ggplot(avg_change)+
-  # geom_hline(yintercept = 0)+
-  # geom_jitter(data = avg_posteriors, aes(y = diff, x = factor(treatment_x, levels = ), fill = diff), width = .25, height = 0, color = "black",shape = 21,alpha = .7)+
-  geom_linerange(aes(ymin = lwr, ymax = upr, x = (treatment_x), ), color = "black", lwd = 1)+
-  geom_point(aes(y = diff_mean, x = (treatment_x), fill = diff_mean), size = 3, color = "black",shape = 21) + 
-  # scale_color_distiller(palette = "RdYlBu", direction = -1)+
-  scale_fill_distiller(palette = "RdYlBu", direction = -1, limits = c(-99,99))+
-  facet_grid(species ~ treatment_group, scales = "free")+
-  guides(fill = "none")+
-  labs( x= "", y= "Change in % Prevalence / Century")+
-  theme_bw()+
-  theme(strip.background = element_blank(), 
-        strip.text = element_text( size = rel(1)), strip.text.y.right = element_text(face = "italic", angle = 0),
-        plot.margin = unit(c(0,.1,.1,.1), "line"))
-simple_trend_plot
-tagged_simple <- tag_facet2(simple_trend_plot)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
